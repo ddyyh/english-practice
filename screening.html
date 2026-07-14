@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>快速筛词 · 默写诊断</title>
+<style>
+  :root {
+    --bg:#1a1a2e; --card-bg:#16213e; --text:#e0e0e0; --accent:#4fc3f7;
+    --success:#66bb6a; --warning:#ffa726; --danger:#ef5350; --muted:#888;
+    --border:#2a2a4a; --input-bg:#1e1e36;
+    --lvl-unknown:#ef5350; --lvl-vague:#ffa726; --lvl-passive:#4fc3f7; --lvl-mastered:#66bb6a;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;}
+  .container{width:100%;max-width:660px;display:flex;flex-direction:column;gap:14px;}
+
+  .header{text-align:center;}
+  .header h1{font-size:1.5rem;color:var(--accent);}
+  .header .subtitle{font-size:0.82rem;color:var(--muted);margin-top:2px;}
+
+  .stats-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+  .stat-item{background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:6px 12px;text-align:center;min-width:48px;}
+  .stat-item .stat-num{font-size:1.1rem;font-weight:700;color:var(--accent);}
+  .stat-item .stat-label{font-size:0.62rem;color:var(--muted);text-transform:uppercase;}
+  .stat-item.unknown .stat-num{color:var(--lvl-unknown);}
+  .stat-item.vague .stat-num{color:var(--lvl-vague);}
+  .stat-item.passive .stat-num{color:var(--lvl-passive);}
+  .stat-item.mastered .stat-num{color:var(--lvl-mastered);}
+
+  .progress-wrap{background:var(--card-bg);border-radius:8px;height:4px;overflow:hidden;}
+  .progress-bar{height:100%;background:linear-gradient(90deg,var(--warning),var(--accent),var(--success));border-radius:8px;transition:width 0.3s;}
+
+  .card{background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:28px 24px;display:flex;flex-direction:column;align-items:center;gap:16px;transition:all 0.25s ease;animation:fadeIn 0.25s ease;min-height:280px;justify-content:center;}
+  .card.show-result{border-color:var(--accent);}
+
+  .card-num{font-size:0.75rem;color:var(--muted);letter-spacing:2px;}
+  .card-word{font-size:2.4rem;font-weight:700;color:#fff;letter-spacing:1px;}
+  .card-pos{font-size:0.8rem;color:var(--muted);margin-top:-8px;}
+
+  /* Input */
+  .input-row{width:100%;display:flex;gap:8px;align-items:stretch;}
+  .input-row input{flex:1;padding:12px 16px;border-radius:10px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:1.1rem;font-family:inherit;outline:none;transition:border-color 0.2s;}
+  .input-row input:focus{border-color:var(--accent);}
+  .input-row input::placeholder{color:var(--muted);font-size:0.9rem;}
+  .btn-dk{background:rgba(239,83,80,0.12);border:1px solid rgba(239,83,80,0.3);color:#ef9a9a;padding:12px 16px;border-radius:10px;font-size:0.85rem;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;transition:all 0.15s;}
+  .btn-dk:hover{background:rgba(239,83,80,0.22);}
+
+  /* Result comparison */
+  .cmp-row{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .cmp-box{padding:12px;border-radius:10px;font-size:0.88rem;line-height:1.5;}
+  .cmp-box.user{background:rgba(255,167,38,0.08);border:1px solid rgba(255,167,38,0.25);}
+  .cmp-box.answer{background:rgba(102,187,106,0.08);border:1px solid rgba(102,187,106,0.25);}
+  .cmp-box .cmp-label{font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;display:block;}
+  .cmp-box.user .cmp-label{color:var(--warning);}
+  .cmp-box.answer .cmp-label{color:var(--success);}
+  .cmp-box .cmp-text{color:#ddd;}
+  .cmp-box.answer .cmp-text{color:#c8e6c9;}
+
+  /* Info panel for unknown */
+  .info-panel{width:100%;display:flex;flex-direction:column;gap:8px;padding:14px;background:var(--input-bg);border-radius:10px;border:1px solid var(--border);animation:fadeIn 0.25s ease;}
+  .info-panel .info-label{font-size:0.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--accent);font-weight:600;}
+  .info-panel .info-text{font-size:0.88rem;color:#ccc;line-height:1.5;}
+
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%;}
+  .btn{padding:11px 20px;border-radius:10px;border:none;font-size:0.9rem;font-weight:600;cursor:pointer;transition:all 0.15s;font-family:inherit;}
+  .btn:active{transform:scale(0.95);}
+  .btn-correct{background:rgba(102,187,106,0.15);border:1px solid rgba(102,187,106,0.35);color:#a5d6a7;}
+  .btn-correct:hover{background:rgba(102,187,106,0.25);}
+  .btn-close{background:rgba(255,167,38,0.12);border:1px solid rgba(255,167,38,0.3);color:#ffcc80;}
+  .btn-close:hover{background:rgba(255,167,38,0.2);}
+  .btn-wrong{background:rgba(239,83,80,0.12);border:1px solid rgba(239,83,80,0.3);color:#ef9a9a;}
+  .btn-wrong:hover{background:rgba(239,83,80,0.2);}
+  .btn-next{background:var(--accent);color:#1a1a2e;padding:12px 28px;}
+  .btn-next:hover{filter:brightness(1.1);}
+  .btn-outline{background:transparent;border:1px solid var(--border);color:var(--muted);font-size:0.82rem;}
+  .btn-outline:hover{border-color:var(--accent);color:var(--accent);}
+
+  .key-hint{font-size:0.7rem;color:var(--muted);text-align:center;}
+
+  /* Report (same as before) */
+  .report{width:100%;display:flex;flex-direction:column;gap:16px;}
+  .report h2{color:var(--accent);text-align:center;font-size:1.2rem;}
+  .report .big-num{font-size:2.8rem;font-weight:800;text-align:center;color:#fff;}
+  .report .big-label{text-align:center;color:var(--muted);font-size:0.85rem;}
+  .level-bar{display:flex;height:36px;border-radius:8px;overflow:hidden;gap:2px;}
+  .level-bar div{display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;color:#fff;min-width:0;}
+  .level-bar .seg-mastered{background:var(--lvl-mastered);color:#1a1a2e;}
+  .level-bar .seg-passive{background:var(--lvl-passive);}
+  .level-bar .seg-vague{background:var(--lvl-vague);}
+  .level-bar .seg-unknown{background:var(--lvl-unknown);}
+  .report-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .report-item{background:var(--input-bg);border-radius:10px;padding:11px 12px;text-align:center;}
+  .report-item .r-num{font-size:1.4rem;font-weight:700;}
+  .report-item .r-label{font-size:0.68rem;color:var(--muted);}
+  .report-item.c-mastered .r-num{color:var(--lvl-mastered);}
+  .report-item.c-passive .r-num{color:var(--lvl-passive);}
+  .report-item.c-vague .r-num{color:var(--lvl-vague);}
+  .report-item.c-unknown .r-num{color:var(--lvl-unknown);}
+  .action-hint{background:rgba(102,187,106,0.08);border:1px solid rgba(102,187,106,0.2);border-radius:12px;padding:16px;text-align:center;line-height:1.7;}
+  .action-hint strong{color:var(--success);}
+  .action-hint a{color:var(--accent);text-decoration:none;}
+  .action-hint a:hover{text-decoration:underline;}
+
+  .cross-link{text-align:center;font-size:0.78rem;color:var(--muted);}
+  .cross-link a{color:var(--accent);text-decoration:none;}
+  .cross-link a:hover{text-decoration:underline;}
+
+  .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--success);color:#1a1a2e;padding:10px 24px;border-radius:20px;font-weight:600;font-size:0.9rem;z-index:100;animation:fadeIn 0.3s ease;pointer-events:none;}
+
+  /* Word Family Graph */
+  .word-family{width:100%;background:var(--input-bg);border-radius:10px;padding:14px;border:1px solid var(--border);animation:fadeIn 0.3s ease;}
+  .wf-title{font-size:0.8rem;color:var(--accent);font-weight:700;margin-bottom:10px;letter-spacing:0.5px;}
+  .wf-tree{display:flex;flex-direction:column;gap:4px;position:relative;padding-left:16px;border-left:2px solid rgba(79,195,247,0.2);}
+  .wf-node{display:flex;align-items:baseline;gap:6px;padding:5px 8px;border-radius:6px;font-size:0.8rem;transition:all 0.15s;flex-wrap:wrap;}
+  .wf-node:hover{background:rgba(79,195,247,0.08);}
+  .wf-node.current{background:rgba(102,187,106,0.1);border:1px solid rgba(102,187,106,0.2);}
+  .wf-word{font-weight:700;color:#fff;min-width:70px;}
+  .wf-prefix{color:var(--accent);font-size:0.72rem;font-family:monospace;}
+  .wf-hint{color:var(--muted);font-size:0.75rem;}
+
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  @media(max-width:480px){.card{padding:20px 14px;}.card-word{font-size:1.8rem;}.cmp-row{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>✍️ 默写筛词诊断</h1>
+    <div class="subtitle">200 个 B1 高频词 · 写出中文意思才算真认识</div>
+  </div>
+
+  <div class="stats-row" id="statsRow">
+    <div class="stat-item"><div class="stat-num" id="screenedCount">0</div><div class="stat-label">已筛</div></div>
+    <div class="stat-item mastered"><div class="stat-num" id="masteredCount">0</div><div class="stat-label">掌握</div></div>
+    <div class="stat-item passive"><div class="stat-num" id="passiveCount">0</div><div class="stat-label">会不熟</div></div>
+    <div class="stat-item unknown"><div class="stat-num" id="unknownCount">0</div><div class="stat-label">不会</div></div>
+  </div>
+
+  <div class="progress-wrap"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+
+  <div class="card" id="mainCard"></div>
+
+  <div class="cross-link">
+    筛完词 → 打开 <a href="flashcards.html" target="_blank">📝 造句活化闪卡</a> 精准练习
+  </div>
+</div>
+<div id="toastContainer"></div>
+
+<script src="wordbank.js"></script>
+<script src="word-families.js"></script>
+<script>const WORD_BANK = WORD_BANK_WB;
+// ============================================================
+// STATE
+// ============================================================
+const SK = 'vocab_screening_v3';  // v3: new format with user answers
+function load(){try{const r=localStorage.getItem(SK);if(r)return JSON.parse(r);}catch(e){}return{results:{},answers:{},screened:0};}
+function save(s){localStorage.setItem(SK,JSON.stringify(s));}
+let S = load();
+
+function getUnscreened(){return WORD_BANK.map((_,i)=>i).filter(i=>!(i in S.results));}
+function getByLevel(level){return Object.entries(S.results).filter(([,v])=>v===level).map(([k])=>parseInt(k));}
+
+// ── 自动判断答案 ──
+function autoJudge(userAnswer, correctZh) {
+  const user = userAnswer.trim().replace(/\s+/g,'');
+  if(!user) return 'unknown';
+
+  // 拆分标准答案（分号/逗号分隔的多个可接受释义）
+  const parts = correctZh.split(/[；;，,、/]/).map(s=>s.trim()).filter(Boolean);
+
+  // 1. 精确匹配：用户答案和某个标准释义完全一致
+  for(const p of parts){if(user===p)return'mastered';}
+
+  // 2. 包含匹配：用户答案包含标准释义，或标准释义包含用户答案
+  for(const p of parts){
+    if(p.includes(user)||user.includes(p))return'passive';
+  }
+
+  // 3. 逐字重叠：计算用户答案和标准释义的汉字重叠率
+  let bestOverlap=0,bestPart='';
+  for(const p of parts){
+    const pChars=[...p].filter(c=>!/[的着了过地和得是]/.test(c));
+    const uChars=[...user].filter(c=>!/[的着了过地和得是]/.test(c));
+    const pSet=new Set(pChars);
+    let overlap=0;
+    for(const c of uChars){if(pSet.has(c))overlap++;}
+    const score=overlap/Math.max(uChars.length,1);
+    if(score>bestOverlap){bestOverlap=score;bestPart=p;}
+  }
+  if(bestOverlap>=0.5)return'passive'; // 一半以上字匹配 → 大概对
+
+  return'unknown';
+}
+const BATCH = 50;
+let queue=[], qIdx=0, currentAnswer='', pendingTimer=null, processing=false;
+
+function startBatch(){
+  if(pendingTimer){clearTimeout(pendingTimer);pendingTimer=null;}
+  processing=false;
+  queue=getUnscreened();
+  if(queue.length===0){showFinalReport();return;}
+  queue=queue.slice(0,BATCH);
+  for(let i=queue.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[queue[i],queue[j]]=[queue[j],queue[i]];}
+  qIdx=0;currentAnswer='';
+  updateStats();renderWord();
+}
+
+function updateStats(){
+  const total=Object.keys(S.results).length;
+  document.getElementById('screenedCount').textContent=total;
+  document.getElementById('masteredCount').textContent=getByLevel('mastered').length;
+  document.getElementById('passiveCount').textContent=getByLevel('passive').length;
+  document.getElementById('unknownCount').textContent=getByLevel('unknown').length;
+  document.getElementById('progressBar').style.width=(total/TOTAL*100)+'%';
+}
+
+function renderWord(){
+  if(qIdx>=queue.length){showBatchComplete();return;}
+  const w=WORD_BANK[queue[qIdx]];
+  currentAnswer='';
+  document.getElementById('mainCard').className='card';
+  document.getElementById('mainCard').innerHTML=`
+    <div class="card-num">${Object.keys(S.results).length+1}/${TOTAL} · 本组${qIdx+1}/${queue.length}</div>
+    <div class="card-word">${w.w}</div>
+    <div class="card-pos">${w.pos} ${PH[w.w]||''}</div>
+    <div class="input-row">
+      <input type="text" id="answerInput" placeholder="输入中文意思… 不认识就写"不认识"" autofocus autocomplete="off">
+      <button class="btn-dk" style="padding:10px 14px;font-size:0.82rem;" onclick="submitAnswer()">确认↵</button>
+      <button class="btn-dk" onclick="dontKnow()">不认识</button>
+    </div>
+    <div class="key-hint">按 Enter 提交 · 按 Esc 跳过</div>`;
+  const inp=document.getElementById('answerInput');
+  if(inp){
+    inp.focus();
+    inp.addEventListener('keydown',e=>{
+      if(e.isComposing)return; // 忽略输入法组合中的按键,中文输入法按Enter选字时不触发
+      if(e.key==='Enter'){e.preventDefault();submitAnswer();}
+      if(e.key==='Escape'){e.preventDefault();dontKnow();}
+    });
+  }
+}
+
+function dontKnow(){
+  if(processing)return;
+  processing=true;
+  currentAnswer='不认识';
+  const idx=queue[qIdx];
+  S.results[idx]='unknown';
+  S.answers[idx]=currentAnswer;
+  S.screened=Object.keys(S.results).length;
+  save(S);updateStats();
+  showUnknownInfo(idx);
+  setTimeout(()=>{processing=false;},200);
+}
+
+function submitAnswer(){
+  if(processing)return; // 防抖：正在处理中，忽略重复触发
+  const inp=document.getElementById('answerInput');
+  if(!inp)return;
+  const ans=inp.value.trim();
+  if(!ans){inp.focus();return;}
+  processing=true;
+  currentAnswer=ans;
+  if(ans==='不认识'||ans==='不知道'||ans==='不'||ans==='不会'){
+    dontKnow();
+    setTimeout(()=>{processing=false;},100);
+    return;
+  }
+
+  const idx=queue[qIdx];
+  const w=WORD_BANK[idx];
+  const verdict=autoJudge(ans,w.zh);
+
+  // 保存结果
+  S.results[idx]=verdict;
+  S.answers[idx]=ans;
+  S.screened=Object.keys(S.results).length;
+  save(S);updateStats();
+
+  // 根据判断展示不同信息
+  if(verdict==='mastered'){
+    showJudgment(idx,ans,'mastered','✅ 写对了！');
+  }else if(verdict==='passive'){
+    showJudgment(idx,ans,'passive','🟡 大意对，但不准确');
+  }else{
+    showJudgment(idx,ans,'unknown','❌ 不认识 / 写错了');
+  }
+  // 100ms 后解锁，确保当前 Enter 事件已完成冒泡
+  setTimeout(()=>{processing=false;},100);
+}
+
+function showJudgment(idx,userAns,level,title){
+  const w=WORD_BANK[idx];
+  const isUnknown=level==='unknown';
+  const isPassive=level==='passive';
+
+  document.getElementById('mainCard').className='card'+(isUnknown||isPassive?' show-result':'');
+
+  let html=`
+    <div class="card-num" style="color:${level==='mastered'?'var(--success)':level==='passive'?'var(--lvl-passive)':'var(--lvl-unknown)'};">${title}</div>
+    <div class="card-word" style="font-size:${isUnknown?'1.5rem':'1.2rem'};">${w.w} <span style="font-size:0.6rem;color:var(--muted);">${w.pos} ${PH[w.w]||''}</span></div>
+    <div class="cmp-row">
+      <div class="cmp-box user">
+        <span class="cmp-label">✏️ 你写的</span>
+        <div class="cmp-text">${escapeHtml(userAns)}</div>
+      </div>
+      <div class="cmp-box answer">
+        <span class="cmp-label">✅ 标准释义</span>
+        <div class="cmp-text">${w.zh}</div>
+      </div>
+    </div>`;
+
+  // 不熟或不会 → 展示详细信息
+  if(isPassive||isUnknown){
+    html+=`<div class="info-panel">
+      <div><span class="info-label">📖 英文释义</span> <span class="info-text">${w.d}</span></div>
+      ${w.root?`<div><span class="info-label">🧬 词根拆解</span> <span class="info-text">${w.root}</span></div>`:''}
+      <div><span class="info-label">✅ 例句</span> <span class="info-text" style="font-style:italic;">${w.ex}</span></div>
+    </div>`;
+    html+=`${renderWordFamilyHTML(w.w)}`;
+  }
+
+  // mastered → 1秒后自动下一个; 其他 → 点击按钮
+  if(level==='mastered'){
+    html+=`<div style="color:var(--muted);font-size:0.75rem;">⏱ 1秒后自动下一个</div>`;
+    document.getElementById('mainCard').innerHTML=html;
+    pendingTimer=setTimeout(()=>{pendingTimer=null;nextWord();},1200);
+  }else{
+    html+=`<button class="btn btn-next" onclick="if(!processing)nextWord()">下一个词 →</button>
+    <div class="key-hint">按 Enter 或点击按钮继续</div>`;
+    document.getElementById('mainCard').innerHTML=html;
+    // 立即添加 Enter 监听（不用等200ms）
+    const h=e=>{
+      if(e.isComposing)return;
+      if(e.key==='Enter'&&!processing){
+        e.preventDefault();e.stopPropagation();
+        document.removeEventListener('keydown',h);
+        if(pendingTimer){clearTimeout(pendingTimer);pendingTimer=null;}
+        nextWord();
+      }
+    };
+    document.addEventListener('keydown',h);
+    // 10秒后自动清理残留监听
+    pendingTimer=setTimeout(()=>{document.removeEventListener('keydown',h);pendingTimer=null;},10000);
+  }
+}
+
+function showUnknownInfo(idx){
+  const w=WORD_BANK[idx];
+  document.getElementById('mainCard').className='card';
+  document.getElementById('mainCard').innerHTML=`
+    <div class="card-num" style="color:var(--lvl-unknown);">❌ 不认识 · 记一下再走</div>
+    <div class="card-word" style="font-size:1.5rem;">${w.w} <span style="color:var(--muted);font-size:0.75rem;">${w.pos} ${PH[w.w]||''}</span></div>
+    <div class="info-panel">
+      <div><span class="info-label">🇨🇳 中文</span> <span class="info-text">${w.zh}</span></div>
+      <div><span class="info-label">📖 英文释义</span> <span class="info-text">${w.d}</span></div>
+      ${w.root?`<div><span class="info-label">🧬 词根拆解</span> <span class="info-text">${w.root}</span></div>`:''}
+      <div><span class="info-label">✅ 例句</span> <span class="info-text" style="font-style:italic;">${w.ex}</span></div>
+    </div>
+    ${renderWordFamilyHTML(w.w)}
+    <button class="btn btn-next" onclick="if(!processing)nextWord()">下一个词 →</button>
+    <div class="key-hint">按 Enter 继续</div>`;
+  // 立即添加 Enter 监听
+  const h=e=>{
+    if(e.isComposing)return;
+    if(e.key==='Enter'&&!processing){e.preventDefault();e.stopPropagation();document.removeEventListener('keydown',h);if(pendingTimer){clearTimeout(pendingTimer);pendingTimer=null;}nextWord();}
+  };
+  document.addEventListener('keydown',h);
+  pendingTimer=setTimeout(()=>{document.removeEventListener('keydown',h);pendingTimer=null;},10000);
+}
+
+function nextWord(){
+  if(processing)return; // 防抖
+  processing=true;
+  if(pendingTimer){clearTimeout(pendingTimer);pendingTimer=null;} // 清除任何待执行的自动跳转
+  // 清除残留的全局 keydown 处理器（通过克隆替换方式清理）
+  document.body.focus();
+  qIdx++;currentAnswer='';
+  if(qIdx>=queue.length){showBatchComplete();processing=false;return;}
+  renderWord();
+  // 延迟解锁，确保 DOM 更新完成
+  setTimeout(()=>{processing=false;},150);
+}
+
+function showBatchComplete(){
+  processing=false;
+  if(pendingTimer){clearTimeout(pendingTimer);pendingTimer=null;}
+  const total=Object.keys(S.results).length;
+  const mastered=getByLevel('mastered').length;
+  const passive=getByLevel('passive').length;
+  const unknown=getByLevel('unknown').length;
+  const allDone=total>=TOTAL;
+
+  document.getElementById('mainCard').className='card';
+  document.getElementById('mainCard').innerHTML=`
+    <div style="text-align:center;padding:10px;">
+      <div style="font-size:2.5rem;">${allDone?'🎉':'☕'}</div>
+      <h2 style="color:var(--accent);font-size:1.2rem;">${allDone?'全部筛完！':'本组完成！'}</h2>
+      <p style="color:var(--muted);margin:6px 0;">进度 ${total}/${TOTAL}</p>
+      <div class="report-grid" style="margin:10px 0;">
+        <div class="report-item c-mastered"><div class="r-num">${mastered}</div><div class="r-label">✅ 掌握</div></div>
+        <div class="report-item c-passive"><div class="r-num">${passive}</div><div class="r-label">🟡 不熟</div></div>
+        <div class="report-item c-unknown"><div class="r-num">${unknown}</div><div class="r-label">❌ 不会</div></div>
+      </div>
+      ${allDone?`
+        <div class="action-hint" style="margin-top:8px;">
+          <strong>📊 诊断完成！</strong><br>
+          <span style="font-size:0.85rem;color:#bbb;">核心差距在 <strong style="color:var(--lvl-passive);">${passive}</strong> 个"会但不熟"的词</span>
+        </div>
+        <div class="btn-row" style="margin-top:12px;">
+          <button class="btn btn-outline" onclick="resetAll()">🔄 重新筛</button>
+          <button class="btn btn-next" onclick="showFinalReport()">📊 完整报告</button>
+        </div>
+      `:`
+        <div class="btn-row" style="margin-top:12px;">
+          <button class="btn btn-outline" onclick="startBatch()">🔄 继续筛 (${Math.min(BATCH,getUnscreened().length)}词)</button>
+          ${passive>0?`<button class="btn btn-next" onclick="window.open('flashcards.html','_blank')">📝 去活化</button>`:''}
+        </div>
+      `}
+    </div>`;
+}
+
+function showFinalReport(){
+  processing=false;
+  if(pendingTimer){clearTimeout(pendingTimer);pendingTimer=null;}
+  const total=Object.keys(S.results).length;
+  const mastered=getByLevel('mastered').length;
+  const passive=getByLevel('passive').length;
+  const unknown=getByLevel('unknown').length;
+  const known=mastered+passive;
+  const knownPct=known/total;
+  let estVocab,level;
+  if(knownPct>=0.85){estVocab='4000-5000+';level='B2 上沿';}
+  else if(knownPct>=0.70){estVocab='3500-4000';level='B1+ ~ B2';}
+  else if(knownPct>=0.50){estVocab='2800-3500';level='B1';}
+  else if(knownPct>=0.30){estVocab='2000-2800';level='A2+ ~ B1';}
+  else{estVocab='<2000';level='A2';}
+
+  const mP=Math.round(mastered/total*100);
+  const pP=Math.round(passive/total*100);
+  const uP=Math.round(unknown/total*100);
+
+  document.getElementById('mainCard').className='card';
+  document.getElementById('mainCard').innerHTML=`
+    <div class="report">
+      <h2>📊 词汇诊断报告</h2>
+      <div class="big-num">${estVocab}</div>
+      <div class="big-label">估算词汇量 · CEFR ${level}</div>
+      <div style="text-align:center;font-size:0.8rem;color:var(--muted);">（基于 200 个 B1 高频词抽查 · 默写法）</div>
+      <div class="level-bar">
+        ${mP>0?`<div class="seg-mastered" style="width:${mP}%">${mP}%</div>`:''}
+        ${pP>0?`<div class="seg-passive" style="width:${pP}%">${pP}%</div>`:''}
+        ${uP>0?`<div class="seg-unknown" style="width:${uP}%">${uP}%</div>`:''}
+      </div>
+      <div class="report-grid">
+        <div class="report-item c-mastered"><div class="r-num">${mastered}</div><div class="r-label">✅ 写出正确释义</div></div>
+        <div class="report-item c-passive"><div class="r-num">${passive}</div><div class="r-label">🎯 大意对/不准确</div></div>
+        <div class="report-item c-unknown"><div class="r-num">${unknown}</div><div class="r-label">❌ 不认识/写错</div></div>
+      </div>
+      <div class="action-hint">
+        <strong>🎯 下一步</strong><br><br>
+        ${passive>0?`<strong style="color:var(--lvl-passive);">${passive}</strong> 个"会但不熟" → 🎯 最高优先级<br>打开 <a href="flashcards.html" target="_blank">📝 造句活化闪卡</a> 精准练习<br><br>`:''}
+        ${unknown>0?`<strong style="color:var(--lvl-unknown);">${unknown}</strong> 个不会的 → 筛选时已看了解析<br>随活化练习自然复习<br><br>`:''}
+        诊断方法：默写中文释义（非选择题）→ 数据更准确
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-outline" onclick="resetAll()">🔄 重新筛查</button>
+        <button class="btn btn-next" onclick="window.open('flashcards.html','_blank')">📝 开始造句活化 →</button>
+      </div>
+    </div>`;
+}
+
+function resetAll(){
+  if(confirm('确定清零重新筛查？')){
+    S={results:{},answers:{},screened:0};save(S);queue=[];qIdx=0;updateStats();
+    init();
+  }
+}
+
+function escapeHtml(str){const d=document.createElement('div');d.textContent=str;return d.innerHTML;}
+
+function init(){
+  updateStats();
+  if(Object.keys(S.results).length===0){
+    document.getElementById('mainCard').innerHTML=`
+      <div style="text-align:center;padding:20px;">
+        <div style="font-size:2.5rem;">✍️</div>
+        <h2 style="color:var(--accent);">默写筛词诊断</h2>
+        <p style="color:var(--muted);line-height:1.7;font-size:0.9rem;">
+          200 个 B1 高频词 · 每批 ${BATCH} 个<br>
+          看到英文 → <strong style="color:#fff;">写出中文意思</strong><br><br>
+          ✅ 写对了 → 跳过<br>
+          🟡 大意对 → 标记不熟<br>
+          ❌ 不认识 → 展示释义+词根<br><br>
+          <span style="color:var(--muted);font-size:0.8rem;">没有猜测空间，写不出就是真不会</span>
+        </p>
+        <button class="btn btn-next" onclick="startBatch()" style="margin-top:8px;">🚀 开始筛词</button>
+      </div>`;
+  } else if(getUnscreened().length>0){
+    document.getElementById('mainCard').innerHTML=`
+      <div style="text-align:center;padding:20px;">
+        <div style="font-size:2rem;">📋</div>
+        <p style="color:var(--muted);line-height:1.6;">
+          已筛 <strong style="color:var(--accent);">${Object.keys(S.results).length}</strong>/${TOTAL} 词<br>
+          还剩 <strong style="color:var(--warning);">${getUnscreened().length}</strong> 词
+        </p>
+        <div class="btn-row" style="margin-top:12px;">
+          <button class="btn btn-outline" onclick="showFinalReport()">📊 报告</button>
+          <button class="btn btn-next" onclick="startBatch()">继续筛查 →</button>
+        </div>
+      </div>`;
+  } else {showFinalReport();}
+}
+init();
+</script>
+</body>
+</html>
