@@ -484,7 +484,7 @@ function resetAll(){
 
 function escapeHtml(str){const d=document.createElement('div');d.textContent=str;return d.innerHTML;}
 
-n// ── 导入导出 ──
+// ── 导入导出 ──
 function exportData(){
   const data={screening:JSON.parse(localStorage.getItem("vocab_screening_v3")||"null"),flashcards:JSON.parse(localStorage.getItem("vocab_flashcards_v2")||"null"),exportedAt:new Date().toISOString()};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
