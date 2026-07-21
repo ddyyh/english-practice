@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🕸️ Word Graph — 单词网络探索</title>
+<style>
+:root{
+  --bg:#0d1117; --card:#161b22; --text:#c9d1d9; --accent:#58a6ff; --success:#3fb950;
+  --warning:#d2991d; --danger:#f85149; --muted:#8b949e; --border:#30363d;
+  --edge-root:#3fb950; --edge-syn:#58a6ff; --edge-ant:#f85149; --edge-theme:#d2991d;
+  --edge-coll:#8b949e; --edge-weak:#bc8cff;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh;width:100vw;}
+
+/* SVG Graph */
+#graphSvg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1;}
+
+/* Overlay cards */
+.graph-node{position:fixed;z-index:2;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px;cursor:pointer;transition:all 0.3s ease;text-align:center;min-width:110px;}
+.graph-node:hover{border-color:var(--accent);box-shadow:0 0 20px rgba(88,166,255,0.15);transform:scale(1.03);}
+.graph-node .n-word{font-size:0.9rem;font-weight:700;color:#fff;}
+.graph-node .n-zh{font-size:0.72rem;color:var(--muted);margin-top:2px;}
+.graph-node .n-edge{font-size:0.6rem;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-top:3px;}
+
+.graph-center{position:fixed;z-index:3;background:var(--card);border:2px solid var(--accent);border-radius:16px;padding:20px 24px;width:300px;text-align:center;box-shadow:0 0 40px rgba(88,166,255,0.2);transition:all 0.4s ease;}
+.graph-center .c-word{font-size:1.8rem;font-weight:800;color:#fff;letter-spacing:1px;}
+.graph-center .c-phon{font-size:0.85rem;color:var(--muted);margin:4px 0;}
+.graph-center .c-pos{display:inline-block;background:rgba(88,166,255,0.15);color:var(--accent);padding:2px 8px;border-radius:4px;font-size:0.72rem;}
+.graph-center .c-def{font-size:0.9rem;color:#ccc;margin:8px 0;line-height:1.4;}
+.graph-center .c-ex{background:rgba(255,255,255,0.03);border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 6px 6px 0;font-size:0.82rem;color:#aaa;font-style:italic;margin:8px 0;text-align:left;}
+.graph-center .c-root{font-size:0.75rem;color:var(--muted);margin:6px 0;}
+
+/* Controls */
+.top-bar{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:rgba(13,17,23,0.9);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);}
+.top-bar h1{font-size:1rem;color:var(--accent);}
+.top-bar .btn-row{display:flex;gap:6px;}
+.top-bar button{background:var(--card);border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:6px;font-size:0.75rem;cursor:pointer;font-family:inherit;transition:all 0.15s;}
+.top-bar button:hover{color:#fff;border-color:var(--accent);}
+.top-bar button.active{background:rgba(88,166,255,0.15);color:var(--accent);border-color:var(--accent);}
+
+/* History Trail */
+.trail{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:center;}
+.trail .t-node{background:var(--card);border:1px solid var(--border);padding:4px 10px;border-radius:14px;font-size:0.7rem;color:var(--muted);cursor:pointer;transition:all 0.15s;}
+.trail .t-node:hover{color:#fff;border-color:var(--accent);}
+.trail .t-arrow{color:var(--muted);font-size:0.6rem;}
+.trail .t-current{color:var(--accent);border-color:var(--accent);font-weight:600;}
+
+/* Edge Toggle */
+.edge-legend{position:fixed;right:16px;top:100px;z-index:10;display:flex;flex-direction:column;gap:4px;background:rgba(13,17,23,0.9);padding:8px 10px;border-radius:8px;border:1px solid var(--border);}
+.edge-legend label{font-size:0.68rem;display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--muted);}
+.edge-legend input{margin:0;}
+.e-dot{width:8px;height:8px;border-radius:50%;}
+
+/* Rating */
+.rating-bar{display:flex;gap:6px;justify-content:center;margin-top:10px;}
+.rating-bar button{flex:1;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:0.72rem;cursor:pointer;font-family:inherit;transition:all 0.15s;}
+.rating-bar button:hover{color:#fff;}
+.rating-bar .r-unknown:hover,.r-unknown.active{border-color:var(--danger);color:var(--danger);}
+.rating-bar .r-vague:hover,.r-vague.active{border-color:var(--warning);color:var(--warning);}
+.rating-bar .r-master:hover,.r-master.active{border-color:var(--success);color:var(--success);}
+
+@media(max-width:600px){
+  .graph-center{width:260px;padding:14px 16px;}
+  .graph-center .c-word{font-size:1.4rem;}
+  .graph-node{min-width:80px;padding:8px 10px;}
+  .graph-node .n-word{font-size:0.78rem;}
+  .edge-legend{display:none;}
+}
+</style>
+</head>
+<body>
+
+<svg id="graphSvg"></svg>
+<div class="top-bar">
+  <h1>🕸️ Word Graph</h1>
+  <div class="btn-row">
+    <button onclick="randomJump()">⚡ 随机跳转</button>
+    <button onclick="goBack()">← 后退</button>
+    <button onclick="resetGraph()">🔄 重置</button>
+    <button onclick="window.open('screening.html','_blank')" style="font-size:0.7rem;">📋 筛词</button>
+    <button onclick="window.open('flashcards.html','_blank')" style="font-size:0.7rem;">✏️ 造句</button>
+  </div>
+</div>
+
+<div class="edge-legend" id="edgeLegend">
+  <label><input type="checkbox" checked onchange="toggleEdges()" data-type="root"> <span class="e-dot" style="background:var(--edge-root);"></span> 同根词</label>
+  <label><input type="checkbox" checked onchange="toggleEdges()" data-type="syn"> <span class="e-dot" style="background:var(--edge-syn);"></span> 近义词</label>
+  <label><input type="checkbox" checked onchange="toggleEdges()" data-type="ant"> <span class="e-dot" style="background:var(--edge-ant);"></span> 反义词</label>
+  <label><input type="checkbox" checked onchange="toggleEdges()" data-type="theme"> <span class="e-dot" style="background:var(--edge-theme);"></span> 同主题</label>
+  <label><input type="checkbox" checked onchange="toggleEdges()" data-type="coll"> <span class="e-dot" style="background:var(--edge-coll);"></span> 搭配词</label>
+</div>
+
+<div class="trail" id="trail"></div>
+
+<script src="wordbank.js"></script>
+<script src="word-families.js"></script>
+<script>
+// ============================================================
+// DATA: Antonyms, Themes
+// ============================================================
+const WORD_BANK = WORD_BANK_W;
+
+const ANTONYMS = {
+  accept:'refuse', refuse:'accept',
+  increase:'decrease', decrease:'increase',
+  temporary:'permanent', permanent:'temporary',
+  positive:'negative', negative:'positive',
+  generous:'selfish', selfish:'generous',
+  external:'internal', internal:'external',
+  majority:'minority', minority:'majority',
+  advantage:'disadvantage', disadvantage:'advantage',
+  guilty:'innocent', innocent:'guilty',
+  formal:'casual', casual:'formal',
+  succeed:'fail',
+  broad:'narrow',
+  complex:'simple',
+};
+
+const THEMES = {
+  'Work & Office':['schedule','deadline','budget','colleague','presentation','interview','promote','negotiate','client','employ','salary','career','meeting','project','task','report','manage','achieve','goal','strategy','perform','contribute','cooperate','feedback','compromise','responsibility','appointment','customer','policy','procedure','application','department','contract','agreement','council'],
+  'Emotions':['disappointed','grateful','proud','jealous','guilty','anxious','nervous','relieved','confident','confused','annoyed','embarrassed','curious','brave','patient','generous','selfish','honest','eager','reluctant','calm','lonely','depressed','sensitive','tough','desperate','enthusiastic','innocent','mood','regret','suffer','worry','comfort','praise'],
+  'Communication':['conversation','dialogue','argument','debate','negotiate','persuade','suggest','mention','describe','explain','express','declare','emphasize','summarize','request','complain','apologize','respond','interrupt','criticize','compliment','consult','warn','promise','insist','advocate','acknowledge','inform','indicate','interpret'],
+  'Technology':['access','device','network','data','platform','application','program','install','develop','design','create','innovation','digital','software','hardware','internet','compute','connect','automate','efficient','transform','research','analysis','solution','artificial','intelligence','capture','display','signal','generate','implement'],
+  'Daily Life':['habit','routine','comfort','convenient','waste','bother','manage','handle','deal','struggle','survive','balance','afford','budget','schedule','prepare','organize','arrange','cancel','decide','choose','option','opportunity','risk','effort','attention','progress','improve','reduce','adjust','adapt'],
+  'Learning':['research','analysis','definition','concept','principle','theory','evidence','prove','demonstrate','examine','evaluate','assess','determine','identify','recognize','realize','understand','discover','explore','conclude','summarize','illustrate','define','describe','compare','contrast','calculate','measure','estimate','concentrate','focus'],
+  'Change':['increase','decrease','improve','reduce','develop','transform','evolve','adapt','adjust','progress','decline','expand','extend','eliminate','replace','reform','modify','shift','convert','alter','grow','shrink','rise','fall','emerge','disappear','create','destroy','establish','abandon'],
+  'Society':['culture','tradition','community','population','economy','government','policy','election','justice','rights','responsibility','freedom','conflict','protest','reform','education','environment','resource','poverty','wealth','equality','diversity','majority','minority','individual','society','global','local','public','private'],
+};
+
+// Build lookup: word → themes
+const WORD_THEMES = {};
+Object.entries(THEMES).forEach(([theme,words])=>{
+  words.forEach(w=>{if(!WORD_THEMES[w])WORD_THEMES[w]=[];WORD_THEMES[w].push(theme);});
+});
+
+// ============================================================
+// GRAPH STATE
+// ============================================================
+let currentWordId = null;
+let history = [];
+let activeEdges = {root:true,syn:true,ant:true,theme:true,coll:true};
+let centerPos = {x:0,y:0};
+let nodeElements = [];
+
+// ============================================================
+// CORE LOGIC
+// ============================================================
+function findWordIndex(word){ return WORD_BANK.findIndex(w=>w.w===word); }
+function getWordData(word){ const i=findWordIndex(word); return i>=0?WORD_BANK[i]:null; }
+function getWordById(id){ return id in W?W[id]:null; }
+
+function getConnections(word){
+  const result = [];
+  const wData = getWordData(word);
+  if(!wData) return result;
+
+  // 1. Root family
+  const family = findRootFamily(word);
+  if(family){
+    Object.keys(family.words).forEach(w=>{
+      if(w!==word && WORD_BANK.some(x=>x.w===w)){
+        result.push({word:w, type:'root', label:'同根-'+family.root.split('=')[0].trim()});
+      }
+    });
+  }
+
+  // 2. Synonyms
+  if(wData.syn){
+    wData.syn.split(/[,，]/).forEach(s=>{
+      const sw=s.trim();
+      if(sw && sw!==word && WORD_BANK.some(x=>x.w===sw)){
+        result.push({word:sw, type:'syn', label:'近义'});
+      }
+    });
+  }
+
+  // 3. Antonyms
+  if(ANTONYMS[word]){
+    const ant = ANTONYMS[word];
+    if(WORD_BANK.some(x=>x.w===ant)){
+      result.push({word:ant, type:'ant', label:'反义'});
+    }
+  }
+
+  // 4. Same theme
+  if(WORD_THEMES[word]){
+    WORD_THEMES[word].forEach(theme=>{
+      (THEMES[theme]||[]).forEach(tw=>{
+        if(tw!==word && !result.find(r=>r.word===tw) && WORD_BANK.some(x=>x.w===tw)){
+          // Only add if not already connected (limit theme connections)
+          if(!result.find(r=>r.word===tw)) result.push({word:tw, type:'theme', label:theme});
+        }
+      });
+    });
+  }
+
+  // 5. Collocations (extract from coll field)
+  if(wData.coll){
+    const parts = wData.coll.split('/');
+    parts.forEach(p=>{
+      const words = p.trim().split(/\s+/).filter(w=>w.length>2&&!/^[a-z]{1,2}$/i.test(w)&&!/^(the|and|or|to|in|on|at|for|of|with|by|a|an|that|not|be|is|are|was|were)$/i.test(w));
+      words.forEach(cw=>{
+        const clean=cw.replace(/[(),…]/g,'');
+        if(clean!==word && WORD_BANK.some(x=>x.w===clean) && !result.find(r=>r.word===clean)){
+          result.push({word:clean, type:'coll', label:'搭配'});
+        }
+      });
+    });
+  }
+
+  // Deduplicate and limit
+  const seen = new Set([word]);
+  return result.filter(r=>{if(seen.has(r.word))return false;seen.add(r.word);return true;}).slice(0,8);
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function renderGraph(word){
+  currentWordId = word;
+  const wData = getWordData(word);
+  if(!wData) return;
+
+  const connections = getConnections(word).filter(c=>activeEdges[c.type]);
+  const cx = window.innerWidth/2;
+  const cy = window.innerHeight*0.42;
+  centerPos = {x:cx, y:cy};
+
+  // Clear old nodes
+  nodeElements.forEach(el=>el.remove());
+  nodeElements = [];
+
+  // SVG lines
+  const svg = document.getElementById('graphSvg');
+  const radius = Math.min(220, window.innerWidth*0.25);
+  svg.setAttribute('viewBox',`0 0 ${window.innerWidth} ${window.innerHeight}`);
+  let svgContent = '';
+
+  // Edge colors
+  const edgeColors = {root: 'var(--edge-root)',syn:'var(--edge-syn)',ant:'var(--edge-ant)',theme:'var(--edge-theme)',coll:'var(--edge-coll)'};
+
+  connections.forEach((c,i)=>{
+    const angle = (i/connections.length)*2*Math.PI - Math.PI/2;
+    const nx = cx + radius*Math.cos(angle);
+    const ny = cy + radius*Math.sin(angle);
+    svgContent += `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${edgeColors[c.type]}" stroke-width="1.5" opacity="0.4"/><text x="${(cx+nx)/2}" y="${(cy+ny)/2-4}" fill="${edgeColors[c.type]}" font-size="10" text-anchor="middle" opacity="0.7">${c.label}</text>`;
+
+    // Peripheral node
+    const node = document.createElement('div');
+    node.className = 'graph-node';
+    node.style.left = (nx-60)+'px';
+    node.style.top = (ny-25)+'px';
+    const cwData = getWordData(c.word);
+    node.innerHTML = `<div class="n-word">${c.word}</div><div class="n-zh">${cwData?cwData.zh||'':''}</div><div class="n-edge" style="color:${edgeColors[c.type]}">${c.label}</div>`;
+    node.onclick = ()=>navigateTo(c.word);
+    document.body.appendChild(node);
+    nodeElements.push(node);
+  });
+
+  svg.innerHTML = svgContent;
+
+  // Center node
+  const center = document.createElement('div');
+  center.className = 'graph-center';
+  center.id = 'centerNode';
+  center.style.left = (cx-150)+'px';
+  center.style.top = (cy-100)+'px';
+  const level = getScreeningLevel(word);
+  const levelBadge = level==='mastered'?'<span style="color:var(--success);font-size:0.7rem;">✅ 已掌握</span>':
+    level==='unknown'?'<span style="color:var(--danger);font-size:0.7rem;">❌ 不认识</span>':
+    level==='passive'?'<span style="color:var(--warning);font-size:0.7rem;">🟡 模糊</span>':'';
+  center.innerHTML = `
+    <div class="c-word">${wData.w}</div>
+    <div class="c-phon">/.../ ${wData.pos} ${levelBadge}</div>
+    <div class="c-def">${wData.def}</div>
+    ${wData.ex?`<div class="c-ex">${wData.ex}</div>`:''}
+    ${wData.root?`<div class="c-root">🧬 ${wData.root}</div>`:''}
+    <div class="rating-bar">
+      <button class="r-unknown ${level==='unknown'?'active':''}" onclick="rateWord('unknown')">😰 不认识</button>
+      <button class="r-vague ${level==='passive'?'active':''}" onclick="rateWord('passive')">🤔 模糊</button>
+      <button class="r-master ${level==='mastered'?'active':''}" onclick="rateWord('mastered')">😎 掌握</button>
+    </div>`;
+  document.body.appendChild(center);
+  nodeElements.push(center);
+
+  updateTrail();
+}
+
+function getScreeningLevel(word){
+  try{
+    const raw=localStorage.getItem('vocab_screening_v3');
+    if(!raw)return null;
+    const data=JSON.parse(raw);
+    if(!data.results)return null;
+    const idx=WORD_BANK.findIndex(w=>w.w===word);
+    if(idx<0||!(idx in data.results))return null;
+    return data.results[idx];
+  }catch(e){return null;}
+}
+
+function rateWord(level){
+  if(!currentWordId)return;
+  try{
+    const raw=localStorage.getItem('vocab_screening_v3');
+    const data=raw?JSON.parse(raw):{results:{},answers:{},screened:0};
+    const idx=WORD_BANK.findIndex(w=>w.w===currentWordId);
+    if(idx<0)return;
+    if(!(idx in data.results))data.screened++;
+    data.results[idx]=level;
+    data.answers[idx]=level==='unknown'?'不认识':level==='mastered'?'掌握':'模糊';
+    localStorage.setItem('vocab_screening_v3',JSON.stringify(data));
+  }catch(e){}
+  // Re-render center
+  const old=document.getElementById('centerNode');
+  if(old)old.remove();
+  nodeElements=nodeElements.filter(e=>e.id!=='centerNode');
+  renderGraph(currentWordId);
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function navigateTo(word){
+  history.push(currentWordId);
+  if(history.length>20)history.shift();
+  // Clear
+  nodeElements.forEach(el=>el.remove());
+  nodeElements=[];
+  renderGraph(word);
+}
+
+function goBack(){
+  if(history.length===0)return;
+  const prev = history.pop();
+  nodeElements.forEach(el=>el.remove());
+  nodeElements=[];
+  renderGraph(prev);
+}
+
+function randomJump(){
+  // Pick from weak words or random
+  const scr=getScreeningLevel;
+  let pool;
+  const weakWords=[];
+  WORD_BANK.forEach((w,i)=>{
+    const l=getScreeningLevel(w.w);
+    if(l==='unknown'||l==='passive')weakWords.push(w.w);
+  });
+  pool=weakWords.length>0?weakWords:WORD_BANK.map(w=>w.w);
+  const pick=pool[Math.floor(Math.random()*pool.length)];
+  nodeElements.forEach(el=>el.remove());
+  nodeElements=[];
+  renderGraph(pick);
+}
+
+function resetGraph(){
+  history=[];
+  nodeElements.forEach(el=>el.remove());
+  nodeElements=[];
+  initGraph();
+}
+
+function updateTrail(){
+  const trail=document.getElementById('trail');
+  const all=[...history.slice(-8),currentWordId].filter(Boolean);
+  trail.innerHTML=all.map((w,i)=>`${i>0?'<span class="t-arrow">→</span>':''}<span class="t-node ${i===all.length-1?'t-current':''}" onclick="jumpToHistory(${i})">${w}</span>`).join('');
+}
+
+function jumpToHistory(idx){
+  const all=[...history.slice(-8),currentWordId].filter(Boolean);
+  if(idx>=all.length)return;
+  // Truncate history
+  history=history.slice(0,history.length-(all.length-1-idx));
+  nodeElements.forEach(el=>el.remove());
+  nodeElements=[];
+  renderGraph(all[idx]);
+}
+
+function toggleEdges(){
+  document.querySelectorAll('#edgeLegend input').forEach(cb=>{
+    activeEdges[cb.dataset.type]=cb.checked;
+  });
+  // Re-render
+  nodeElements.forEach(el=>el.remove());
+  nodeElements=[];
+  renderGraph(currentWordId);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function initGraph(){
+  // Find weakest word
+  let startWord=WORD_BANK[0].w;
+  let worstScore=-1;
+  try{
+    const raw=localStorage.getItem('vocab_screening_v3');
+    if(raw){
+      const data=JSON.parse(raw);
+      if(data.results){
+        // Count "unknown" words to find weakest
+        const unknownWords=[], passiveWords=[];
+        Object.entries(data.results).forEach(([k,v])=>{
+          const idx=parseInt(k);
+          if(idx<WORD_BANK.length){
+            if(v==='unknown')unknownWords.push(idx);
+            else if(v==='passive')passiveWords.push(idx);
+          }
+        });
+        // Pick random from unknown (weakest) or passive
+        const pool=unknownWords.length>0?unknownWords:passiveWords;
+        if(pool.length>0){
+          startWord=WORD_BANK[pool[Math.floor(Math.random()*pool.length)]].w;
+        }
+      }
+    }
+  }catch(e){}
+  renderGraph(startWord);
+}
+
+window.addEventListener('resize',()=>{
+  if(currentWordId){
+    nodeElements.forEach(el=>el.remove());
+    nodeElements=[];
+    renderGraph(currentWordId);
+  }
+});
+
+initGraph();
+</script>
+</body>
+</html>
