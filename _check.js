@@ -1,139 +1,4 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Word Graph</title>
-<style>
-:root{
-  --bg:#1a1a1c; --panel:#242426; --text:#f5f5f7; --text2:#aeaeb2; --text3:#636366;
-  --accent:#0a84ff; --green:#30d158; --orange:#ff9f0a; --red:#ff453a; --purple:#bf5af2;
-}
-*{margin:0;padding:0;box-sizing:border-box;}
-body{
-  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
-  background:var(--bg);color:var(--text);overflow:hidden;height:100dvh;width:100vw;
-  -webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none;
-}
-canvas{position:fixed;top:0;left:0;z-index:1;}
 
-/* Top bar */
-.top-bar{
-  position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;
-  justify-content:space-between;padding:10px 16px;gap:12px;
-  background:rgba(26,26,28,0.7);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  pointer-events:none;
-}
-.top-bar>*{pointer-events:auto;}
-.top-bar h1{font-size:0.95rem;font-weight:700;letter-spacing:-0.3px;white-space:nowrap;}
-.top-bar .btn-group{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
-.top-bar button{
-  background:rgba(255,255,255,0.06);border:none;color:var(--text2);padding:6px 12px;
-  border-radius:100px;font-size:0.73rem;font-weight:500;cursor:pointer;font-family:inherit;
-  transition:all 0.2s;
-}
-.top-bar button:hover{background:rgba(255,255,255,0.12);color:var(--text);}
-.top-bar button.active{background:var(--accent);color:#fff;}
-
-/* Tooltip */
-.tooltip{
-  position:fixed;z-index:5;pointer-events:none;opacity:0;transition:opacity 0.15s;
-  background:rgba(36,36,38,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-  padding:8px 14px;border-radius:12px;font-size:0.78rem;max-width:200px;
-  box-shadow:0 4px 24px rgba(0,0,0,0.4);
-}
-.tooltip .t-word{font-weight:700;color:#fff;}
-.tooltip .t-phon{color:var(--text2);font-size:0.7rem;margin-left:6px;}
-.tooltip .t-def{color:var(--text2);font-size:0.7rem;margin-top:2px;line-height:1.3;}
-
-/* Detail panel */
-.detail-panel{
-  position:fixed;right:-380px;top:0;bottom:0;width:360px;z-index:20;
-  background:var(--panel);border-left:0.5px solid rgba(255,255,255,0.08);
-  padding:24px 22px;overflow-y:auto;transition:right 0.35s cubic-bezier(0.25,0.1,0.25,1);
-  box-shadow:-4px 0 40px rgba(0,0,0,0.5);
-}
-.detail-panel.open{right:0;}
-.detail-panel .close-btn{
-  position:absolute;top:16px;right:16px;width:28px;height:28px;border-radius:50%;
-  background:rgba(255,255,255,0.06);border:none;color:var(--text2);font-size:1rem;
-  cursor:pointer;display:flex;align-items:center;justify-content:center;
-}
-.detail-panel .d-word{font-size:1.8rem;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px;}
-.detail-panel .d-meta{display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap;}
-.detail-panel .d-pos{background:rgba(10,132,255,0.12);color:var(--accent);padding:3px 10px;border-radius:100px;font-size:0.7rem;}
-.detail-panel .d-phon{color:var(--text2);font-size:0.82rem;}
-.detail-panel .d-def{color:var(--text2);font-size:0.9rem;line-height:1.5;margin:12px 0;}
-.detail-panel .d-ex{background:rgba(255,255,255,0.03);border-left:2.5px solid var(--accent);padding:10px 14px;border-radius:0 10px 10px 0;font-size:0.82rem;color:var(--text);font-style:italic;line-height:1.5;margin:12px 0;}
-.detail-panel .d-root{font-size:0.75rem;color:var(--text3);margin:8px 0;line-height:1.4;}
-.detail-panel .d-related{margin-top:16px;}
-.detail-panel .d-related h4{font-size:0.75rem;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
-.detail-panel .d-related .rel-tag{display:inline-block;padding:4px 10px;border-radius:100px;font-size:0.72rem;margin:3px 4px 3px 0;cursor:pointer;transition:all 0.15s;background:rgba(255,255,255,0.04);color:var(--text2);}
-.detail-panel .d-related .rel-tag:hover{background:rgba(255,255,255,0.1);color:#fff;}
-.detail-panel .rating-row{display:flex;gap:8px;margin-top:16px;}
-.detail-panel .rating-row button{flex:1;padding:8px 4px;border-radius:100px;border:none;background:rgba(255,255,255,0.04);color:var(--text2);font-size:0.72rem;cursor:pointer;font-family:inherit;transition:all 0.2s;}
-.detail-panel .rating-row button:hover{background:rgba(255,255,255,0.08);}
-
-/* Edge legend */
-.legend{
-  position:fixed;right:12px;top:90px;z-index:8;display:flex;flex-direction:column;gap:5px;
-  background:rgba(36,36,38,0.7);backdrop-filter:blur(16px);padding:10px 12px;border-radius:10px;
-}
-.legend label{font-size:0.65rem;display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--text3);font-weight:500;}
-.legend input{accent-color:var(--accent);} .legend .dot{width:6px;height:6px;border-radius:50%;}
-
-/* Sub-graph hint */
-.sub-hint{
-  position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:8;
-  background:var(--panel);padding:8px 18px;border-radius:100px;font-size:0.73rem;color:var(--text2);
-  box-shadow:0 4px 20px rgba(0,0,0,0.4);display:none;
-}
-.sub-hint.show{display:block;}
-
-@media(max-width:640px){
-  .detail-panel{width:100vw;right:-100vw;}
-  .top-bar{padding:8px 10px;}
-  .top-bar h1{font-size:0.8rem;}
-  .top-bar button{padding:5px 10px;font-size:0.68rem;}
-  .legend{right:4px;padding:6px 8px;}
-}
-</style>
-</head>
-<body>
-
-<canvas id="c"></canvas>
-
-<div class="top-bar">
-  <h1>🕸️ Word Graph · 500词</h1>
-  <div class="btn-group">
-    <button onclick="resetView()">🔍 全局</button>
-    <button onclick="focusWeakest()">🎯 薄弱词</button>
-    <button onclick="randomJump()">⚡ 随机</button>
-    <button style="opacity:0.7" onclick="window.open('screening.html','_blank')">筛词</button>
-    <button style="opacity:0.7" onclick="window.open('flashcards.html','_blank')">造句</button>
-  </div>
-</div>
-
-<div class="tooltip" id="tooltip"></div>
-
-<div class="detail-panel" id="detailPanel">
-  <button class="close-btn" onclick="closeDetail()">✕</button>
-  <div id="detailContent"></div>
-</div>
-
-<div class="sub-hint" id="subHint">双击空白返回全局视图</div>
-
-<div class="legend" id="legend">
-  <label><input type="checkbox" checked onchange="toggleEdge('root')"><span class="dot" style="background:#30d158"></span>同根</label>
-  <label><input type="checkbox" checked onchange="toggleEdge('syn')"><span class="dot" style="background:#0a84ff"></span>近义</label>
-  <label><input type="checkbox" checked onchange="toggleEdge('ant')"><span class="dot" style="background:#ff453a"></span>反义</label>
-  <label><input type="checkbox" checked onchange="toggleEdge('theme')"><span class="dot" style="background:#ff9f0a"></span>主题</label>
-  <label><input type="checkbox" checked onchange="toggleEdge('coll')"><span class="dot" style="background:#aeaeb2"></span>搭配</label>
-</div>
-
-<script src="wordbank.js"></script>
-<script src="word-families.js"></script>
-<script>
 // ============================================================
 // DATA
 // ============================================================
@@ -247,7 +112,7 @@ let subGraphRoot=null; // null = global view
 
 // Convert screen coords to world
 function toWorld(sx,sy){return{x:(sx-viewX)/zoom,y:(sy-viewY)/zoom};}
-function toScreen(wx,wy){return{x:wx*zoom+viewX,y:wy*zoom+viewY};}
+function toScreen(wx,wy){return{wx*zoom+viewX,wy*zoom+viewY};}
 
 // ============================================================
 // RENDER
@@ -483,6 +348,3 @@ document.addEventListener('keydown',e=>{
   if(e.key==='f'&&!e.ctrlKey&&!e.metaKey){focusWeakest();}
   if(e.key==='r'&&!e.ctrlKey&&!e.metaKey){randomJump();}
 });
-</script>
-</body>
-</html>
