@@ -111,7 +111,7 @@ NODES.forEach(n=>{n.r=6+Math.min(14,n.conn.length*1.5);});
 
 // ── CANVAS ──
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
-let vx=0,vy=0,zm=0.35,hover=null,drag=null,pan=false,psx=0,psy=0,pvx=0,pvy=0,sub=null;
+let vx=0,vy=0,zm=0.35,hover=null,drag=null,pan=false,psx=0,psy=0,pvx=0,pvy=0,sub=null,visible=NODES;
 
 function resize(){cv.width=window.innerWidth;cv.height=window.innerHeight;render();}
 resize();window.addEventListener('resize',resize);
@@ -119,7 +119,6 @@ resize();window.addEventListener('resize',resize);
 function wp(n){return{x:n.x*zm+vx,y:n.y*zm+vy};}
 function fn(sx,sy){const wx=(sx-vx)/zm,wy=(sy-vy)/zm;for(let i=visible.length-1;i>=0;i--){const n=visible[i],dx=n.x-wx,dy=n.y-wy;if(Math.sqrt(dx*dx+dy*dy)<n.r+20/zm)return n;}return null;}
 
-let visible=NODES;
 function updateVisible(){
   if(!sub){visible=NODES;return;}
   const s=new Set([sub.id]);
