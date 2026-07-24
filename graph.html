@@ -152,7 +152,7 @@ cv.addEventListener('mousemove',e=>{
 });
 cv.addEventListener('mousedown',e=>{
   const n=fn(e.clientX,e.clientY);
-  if(n){if(e.shiftKey||e.button===2){drag=n;const w=(e.clientX-vx)/zm,wy=(e.clientY-vy)/zm;drag._ox=w-n.x;drag._oy=wy-n.y;}return;}
+  if(n){if(e.shiftKey){drag=n;const w=(e.clientX-vx)/zm,wy=(e.clientY-vy)/zm;drag._ox=w-n.x;drag._oy=wy-n.y;}return;}
   pan=true;psx=e.clientX;psy=e.clientY;pvx=vx;pvy=vy;
 });
 cv.addEventListener('mouseup',()=>{drag=null;pan=false;});
