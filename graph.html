@@ -179,22 +179,32 @@ cv.addEventListener('touchend',()=>{pan=false;_pd=0;drag=null;});
 
 
 
-// ── RATING POPOVER (floating bubbles near node) ──
+// ── 2级：评分气泡环绕节点 ──
 function showRatingPopover(n){
   var old=document.getElementById("ratingPopover");if(old)old.remove();
-  var div=document.createElement("div");div.id="ratingPopover";
-  div.style.cssText="position:fixed;z-index:25;left:50%;transform:translateX(-50%);bottom:100px;background:rgba(36,36,38,0.95);backdrop-filter:blur(12px);padding:10px 12px;border-radius:16px;display:flex;gap:8px;box-shadow:0 4px 32px rgba(0,0,0,0.6);transition:all 0.25s ease;";
-  [
-    {t:"😰 不认识",s:"background:rgba(255,69,58,0.2);color:#ff453a",l:"unknown"},
-    {t:"🤔 模糊",s:"background:rgba(255,159,10,0.2);color:#ff9f0a",l:"passive"},
-    {t:"😎 掌握",s:"background:rgba(48,209,88,0.2);color:#30d158",l:"mastered"}
-  ].forEach(function(b){
+  var p=wp(n),r=n.r*zm,dist=r+36;
+  var btns=[
+    {t:"😰 不认识",bg:"rgba(255,69,58,0.85)",cl:"#fff",l:"unknown",ang:-130},
+    {t:"🤔 模糊",bg:"rgba(255,159,10,0.85)",cl:"#fff",l:"passive",ang:-90},
+    {t:"😎 掌握",bg:"rgba(48,209,88,0.85)",cl:"#fff",l:"mastered",ang:-50}
+  ];
+  var ids=['rp-unk','rp-pas','rp-mas'];
+  btns.forEach(function(b,i){
+    var rad=b.ang*Math.PI/180;
     var btn=document.createElement("button");
-    btn.textContent=b.t;btn.style.cssText="padding:10px 18px;border-radius:100px;border:none;font-size:0.85rem;cursor:pointer;font-family:inherit;white-space:nowrap;"+b.s;
+    btn.id=ids[i];
+    btn.textContent=b.t;btn.style.cssText="position:fixed;z-index:25;padding:7px 14px;border-radius:100px;border:none;font-size:0.78rem;cursor:pointer;font-family:inherit;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.5);background:"+b.bg+";color:"+b.cl+";transition:all 0.2s ease;";
+    btn.style.left=(p.x+dist*Math.cos(rad)-40)+"px";
+    btn.style.top=(p.y+dist*Math.sin(rad)-14)+"px";
+    btn.onmouseover=function(){this.style.transform="scale(1.08)";};
+    btn.onmouseout=function(){this.style.transform="scale(1)";};
     btn.onclick=function(){markNodePop(n.id,b.l);};
-    div.appendChild(btn);
+    document.body.appendChild(btn);
   });
-  document.body.appendChild(div);
+  // Store for cleanup
+  var holder=document.createElement("div");holder.id="ratingPopover";holder.style.display="none";
+  ids.forEach(function(id){var b=document.getElementById(id);if(b)b.setAttribute("data-rp","1");});
+  document.body.appendChild(holder);
   showInfoCard(n);
 }
 function markNodePop(id,level){
