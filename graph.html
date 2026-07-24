@@ -160,7 +160,8 @@ cv.addEventListener('mouseup',()=>{drag=null;pan=false;});
 cv.addEventListener('mouseleave',()=>{drag=null;pan=false;hover=null;render();document.getElementById('tt').style.opacity='0';});
 cv.addEventListener('wheel',e=>{e.preventDefault();const mx=e.clientX,my=e.clientY,zf=e.deltaY<0?1.1:0.9;vx=mx-(mx-vx)*zf;vy=my-(my-vy)*zf;zm=Math.max(0.1,Math.min(1.8,zm*zf));render();},{passive:false});
 cv.addEventListener('click',()=>{
-  if(!drag&&hover){
+  if(!drag&&!hover){document.getElementById("panel").classList.remove("open");return;}
+	  if(!drag&&hover){
     const op=document.getElementById('ratingPopover');if(op)op.remove();const ip=document.getElementById('infoPopover');if(ip)ip.remove();
     sub=hover;updateVisible();zm=0.55;
     vx=cv.width/2-hover.x*zm;vy=cv.height/2-hover.y*zm;
