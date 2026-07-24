@@ -42,14 +42,14 @@ canvas{position:fixed;top:0;left:0;z-index:1}
 <div class="top-bar"><h1>🕸️ Word Graph · 500词</h1><div class="btn-group"><button onclick="resetView()">🔍 全局</button><button onclick="jumpWeakest()">🎯 薄弱词</button><button onclick="jumpRandom()">⚡ 随机</button><button style="opacity:0.7" onclick="window.open('screening.html','_blank')">筛词</button><button style="opacity:0.7" onclick="window.open('flashcards.html','_blank')">造句</button></div></div>
 <div class="tooltip" id="tt"></div>
 <div class="panel" id="panel"><button class="close" onclick="document.getElementById('panel').classList.remove('open')">✕</button><div id="pcontent"></div></div>
-<div class="legend"><div style="font-size:0.6rem;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">连线颜色</div><label title="共享同一拉丁/希腊词根的词，如 expect→inspect→respect（都来自 -spect- 看）"><input type="checkbox" checked onchange="tgl('root')"><span class="dot" style="background:#30d158"></span>同根词族</label><label title="意思相近可以互换的词"><input type="checkbox" checked onchange="tgl('syn')"><span class="dot" style="background:#0a84ff"></span>近义词</label><label title="意思相反的词"><input type="checkbox" checked onchange="tgl('ant')"><span class="dot" style="background:#ff453a"></span>反义词</label><label title="属于同一使用场景的词，如 deadline、budget、schedule 都是工作场景"><input type="checkbox" checked onchange="tgl('theme')"><span class="dot" style="background:#ff9f0a"></span>同场景</label><label title="经常一起出现的搭配词，如 meet + deadline"><input type="checkbox" checked onchange="tgl('coll')"><span class="dot" style="background:#aeaeb2"></span>常见搭配</label></div>
+<div class="legend"><div style="font-size:0.6rem;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">连线颜色</div><label title="共享同一拉丁/希腊词根的词，如 expect→inspect→respect（都来自 -spect- 看）"><input type="checkbox" checked onchange="tgl('root')"><span class="dot" style="background:#30d158"></span>同根词族</label><label title="意思相近可以互换的词"><input type="checkbox" checked onchange="tgl('syn')"><span class="dot" style="background:#0a84ff"></span>近义词</label><label title="意思相反的词"><input type="checkbox" checked onchange="tgl('ant')"><span class="dot" style="background:#ff453a"></span>反义词</label><label title="属于同一使用场景的词，如 deadline、budget、schedule 都是工作场景"><input type="checkbox" onchange="tgl('theme')"><span class="dot" style="background:#ff9f0a"></span>同场景</label><label title="经常一起出现的搭配词，如 meet + deadline"><input type="checkbox" checked onchange="tgl('coll')"><span class="dot" style="background:#aeaeb2"></span>常见搭配</label></div>
 <div id="status" style="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(36,36,38,0.85);padding:6px 16px;border-radius:100px;font-size:0.72rem;color:var(--text3);pointer-events:none;transition:all 0.3s;">🌐 全局视图 · 500词 · 单击词进入聚焦 | 双击词看详情 | 滚轮缩放</div>
 
 <script src="wordbank.js"></script>
 <script src="word-families.js"></script>
 <script>
 // ── EDGE TYPES ──
-const ET={root:{c:'#30d158',on:true},syn:{c:'#0a84ff',on:true},ant:{c:'#ff453a',on:true},theme:{c:'#ff9f0a',on:true},coll:{c:'#aeaeb2',on:true}};
+const ET={root:{c:'#30d158',on:true},syn:{c:'#0a84ff',on:true},ant:{c:'#ff453a',on:true},theme:{c:'#ff9f0a',on:false},coll:{c:'#aeaeb2',on:true}};
 function tgl(t){ET[t].on=!ET[t].on;render();}
 
 // ── ANTONYMS ──
@@ -137,7 +137,7 @@ function render(){
   // Edges
   visible.forEach(n=>{n.conn.forEach(c=>{if(!vs.has(c.n.id)||c.n.id<n.id)return;const e=ET[c.t];if(!e||!e.on)return;const p1=wp(n),p2=wp(c.n),hl=(hover===n||hover===c.n);ctx.strokeStyle=e.c;ctx.globalAlpha=hl?0.55:0.1;ctx.lineWidth=hl?1.5:0.5;ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.stroke();ctx.globalAlpha=1;});});
   // Nodes
-  visible.forEach(n=>{const p=wp(n),r=Math.max(3,n.r*zm),hl=(hover===n);ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fillStyle=hl?(n.m==='mastered'?'#78787a':n.m==='unknown'?'#ff453a':n.m==='passive'?'#ff9f0a':'#fff'):nc(n);ctx.fill();if(hl||r>4){ctx.strokeStyle=hl?'#fff':'rgba(255,255,255,0.12)';ctx.lineWidth=hl?2:0.5;ctx.stroke();}if(zm>0.22||hl){ctx.fillStyle=hl?'#fff':n.m==='mastered'?'rgba(255,255,255,0.2)':'rgba(255,255,255,0.5)';ctx.font=Math.max(7,r*1.1)+'px -apple-system,sans-serif';ctx.textAlign='center';ctx.fillText(n.word,p.x,p.y+r+10);}});
+  visible.forEach(n=>{const p=wp(n),r=Math.max(3,n.r*zm),hl=(hover===n);ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fillStyle=hl?(n.m==='mastered'?'#78787a':n.m==='unknown'?'#ff453a':n.m==='passive'?'#ff9f0a':'#fff'):nc(n);ctx.fill();if(hl||r>4){ctx.strokeStyle=hl?'#fff':'rgba(255,255,255,0.12)';ctx.lineWidth=hl?2:0.5;ctx.stroke();}if(zm>0.15||hl){ctx.fillStyle=hl?'#fff':n.m==='mastered'?'rgba(255,255,255,0.2)':'rgba(255,255,255,0.5)';ctx.font=Math.max(9,r*1.1)+'px -apple-system,sans-serif';ctx.textAlign='center';ctx.fillText(n.word,p.x,p.y+r+10);}});
 }
 
 // ── INTERACTION ──
@@ -158,7 +158,15 @@ cv.addEventListener('mousedown',e=>{
 cv.addEventListener('mouseup',()=>{drag=null;pan=false;});
 cv.addEventListener('mouseleave',()=>{drag=null;pan=false;hover=null;render();document.getElementById('tt').style.opacity='0';});
 cv.addEventListener('wheel',e=>{e.preventDefault();const mx=e.clientX,my=e.clientY,zf=e.deltaY<0?1.1:0.9;vx=mx-(mx-vx)*zf;vy=my-(my-vy)*zf;zm=Math.max(0.1,Math.min(1.8,zm*zf));render();},{passive:false});
-cv.addEventListener('click',()=>{if(!drag&&hover){sub=hover;updateVisible();zm=0.55;vx=cv.width/2-hover.x*zm;vy=cv.height/2-hover.y*zm;document.getElementById('status').innerHTML='🎯 聚焦: <b style=color:#fff>'+hover.word+'</b> · 仅显示关联词 · 双击空白返回全局';render();}});
+cv.addEventListener('click',()=>{
+  if(!drag&&hover){
+    const op=document.getElementById('ratingPopover');if(op)op.remove();
+    sub=hover;updateVisible();zm=0.55;
+    vx=cv.width/2-hover.x*zm;vy=cv.height/2-hover.y*zm;
+    document.getElementById('status').innerHTML='🎯 聚焦: <b style=color:#fff>'+hover.word+'</b> · 仅显示关联词 · 双击空白返回全局';
+    showRatingPopover(hover);render();
+  }
+});
 cv.addEventListener('dblclick',e=>{const n=fn(e.clientX,e.clientY);if(n){openDetail(n);}else{sub=null;updateVisible();resetView();render();document.getElementById('status').innerHTML='🌐 全局视图 · 500词 · 单击词进入聚焦 | 双击词看详情 | 滚轮缩放';}});
 cv.addEventListener('contextmenu',e=>{e.preventDefault();});
 // Touch support for mobile
@@ -168,11 +176,35 @@ cv.addEventListener('touchmove',e=>{e.preventDefault();if(pan&&e.touches.length=
 cv.addEventListener('touchend',()=>{pan=false;_pd=0;drag=null;});
 
 
+
+// ── RATING POPOVER (floating bubbles near node) ──
+function showRatingPopover(n){
+  // Remove existing popover
+  const old=document.getElementById('ratingPopover');
+  if(old)old.remove();
+  const p=wp(n);
+  const div=document.createElement('div');
+  div.id='ratingPopover';
+  div.style.cssText='position:fixed;z-index:15;background:rgba(36,36,38,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:6px 8px;border-radius:14px;display:flex;gap:6px;box-shadow:0 4px 24px rgba(0,0,0,0.5);transition:all 0.25s ease;';
+  div.style.left=(p.x-90)+'px';div.style.top=(p.y+n.r*zm+16)+'px';
+  div.innerHTML='<button style="padding:6px 12px;border-radius:100px;border:none;background:rgba(255,69,58,0.15);color:#ff453a;font-size:0.73rem;cursor:pointer;font-family:inherit;white-space:nowrap;" onclick="markNodePop('+n.id+',"unknown")">😰 不认识</button><button style="padding:6px 12px;border-radius:100px;border:none;background:rgba(255,159,10,0.15);color:#ff9f0a;font-size:0.73rem;cursor:pointer;font-family:inherit;white-space:nowrap;" onclick="markNodePop('+n.id+',"passive")">🤔 模糊</button><button style="padding:6px 12px;border-radius:100px;border:none;background:rgba(48,209,88,0.15);color:#30d158;font-size:0.73rem;cursor:pointer;font-family:inherit;white-space:nowrap;" onclick="markNodePop('+n.id+',"mastered")">😎 掌握</button>';
+  document.body.appendChild(div);
+}
+function markNodePop(id,level){
+  NODES[id].m=level;
+  try{const d=JSON.parse(localStorage.getItem('vocab_screening_v3')||'{"results":{},"answers":{},"screened":0}');if(!(id in d.results))d.screened++;d.results[id]=level;localStorage.setItem('vocab_screening_v3',JSON.stringify(d));}catch(e){}
+  render();
+  const pop=document.getElementById('ratingPopover');
+  if(pop)pop.remove();
+  // Re-show with updated state if still focused
+  if(sub&&sub.id===id)showRatingPopover(NODES[id]);
+}
+
 // ── DETAIL PANEL ──
 function openDetail(n){
   const l=n.m;
   document.getElementById('pcontent').innerHTML=
-    '<div class="pw">'+n.word+'</div><a href="flashcards.html" target="_blank" style="font-size:0.7rem;color:var(--accent);text-decoration:none;display:inline-block;margin-bottom:6px;">✏️ 在闪卡中练习 →</a><div class="pm"><span class="pp">'+n.phon+'</span><span class="po">'+n.pos+'</span></div>'+
+    '<div class="pw">'+n.word+'</div><div style="font-size:1.1rem;color:#fff;margin:4px 0;">'+n.zh+'</div><div class="pm"><span class="pp">'+n.phon+'</span><span class="po">'+n.pos+'</span></div><a href="flashcards.html" target="_blank" style="font-size:0.7rem;color:var(--accent);text-decoration:none;display:inline-block;margin:4px 0;">✏️ 在闪卡中练习 →</a>'+
     '<div class="pd">'+n.def+'</div>'+(n.ex?'<div class="pe">'+n.ex+'</div>':'')+
     (n.root?'<div class="pr">🧬 '+n.root+'</div>':'')+
     '<div class="prel"><h4>关联词 ('+n.conn.length+')</h4>'+n.conn.slice(0,12).map(c=>'<span onclick="goNode('+c.n.id+')">'+c.n.word+'</span>').join('')+'</div>'+
@@ -189,7 +221,7 @@ function mark(id,level){
 }
 
 // ── CONTROLS ──
-function resetView(){sub=null;updateVisible();vx=0;vy=0;zm=0.35;render();document.getElementById('status').innerHTML='🌐 全局视图 · 500词 · 单击词进入聚焦 | 双击词看详情 | 滚轮缩放';}
+function resetView(){const p=document.getElementById('ratingPopover');if(p)p.remove();sub=null;updateVisible();vx=0;vy=0;zm=0.35;render();document.getElementById('status').innerHTML='🌐 全局视图 · 500词 · 单击词进入聚焦 | 双击词看详情 | 滚轮缩放';}
 function jumpWeakest(){
   const unk=NODES.filter(n=>n.m==='unknown'),pass=NODES.filter(n=>n.m==='passive');
   const pool=unk.length>0?unk:pass.length>0?pass:NODES;
