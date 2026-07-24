@@ -161,12 +161,18 @@ cv.addEventListener('wheel',e=>{e.preventDefault();const mx=e.clientX,my=e.clien
 cv.addEventListener('click',()=>{if(!drag&&hover){sub=hover;updateVisible();zm=0.55;vx=cv.width/2-hover.x*zm;vy=cv.height/2-hover.y*zm;document.getElementById('status').innerHTML='🎯 聚焦: <b style=color:#fff>'+hover.word+'</b> · 仅显示关联词 · 双击空白返回全局';render();}});
 cv.addEventListener('dblclick',e=>{const n=fn(e.clientX,e.clientY);if(n){openDetail(n);}else{sub=null;updateVisible();resetView();render();document.getElementById('status').innerHTML='🌐 全局视图 · 500词 · 单击词进入聚焦 | 双击词看详情 | 滚轮缩放';}});
 cv.addEventListener('contextmenu',e=>{e.preventDefault();});
+// Touch support for mobile
+let _pd=0,_pz=0;
+cv.addEventListener('touchstart',e=>{e.preventDefault();if(e.touches.length===1){const t=e.touches[0];const n=fn(t.clientX,t.clientY);if(n){sub=n;updateVisible();zm=0.55;vx=cv.width/2-n.x*zm;vy=cv.height/2-n.y*zm;document.getElementById('status').innerHTML='🎯 聚焦: <b style=color:#fff>'+n.word+'</b> · 双击空白返回全局';render();document.getElementById('panel').classList.remove('open');}else{psx=t.clientX;psy=t.clientY;pvx=vx;pvy=vy;pan=true;}}else if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;_pd=Math.sqrt(dx*dx+dy*dy);_pz=zm;}},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault();if(pan&&e.touches.length===1){const t=e.touches[0];vx=t.clientX-psx+pvx;vy=t.clientY-psy+pvy;render();}else if(e.touches.length===2&&_pd>0){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;const nd=Math.sqrt(dx*dx+dy*dy);const nz=_pz*(nd/_pd);const mx=(e.touches[0].clientX+e.touches[1].clientX)/2,my=(e.touches[0].clientY+e.touches[1].clientY)/2;vx=mx-(mx-vx)*(nz/zm);vy=my-(my-vy)*(nz/zm);zm=Math.max(0.1,Math.min(1.8,nz));render();}},{passive:false});
+cv.addEventListener('touchend',()=>{pan=false;_pd=0;drag=null;});
+
 
 // ── DETAIL PANEL ──
 function openDetail(n){
   const l=n.m;
   document.getElementById('pcontent').innerHTML=
-    '<div class="pw">'+n.word+'</div><div class="pm"><span class="pp">'+n.phon+'</span><span class="po">'+n.pos+'</span></div>'+
+    '<div class="pw">'+n.word+'</div><a href="flashcards.html" target="_blank" style="font-size:0.7rem;color:var(--accent);text-decoration:none;display:inline-block;margin-bottom:6px;">✏️ 在闪卡中练习 →</a><div class="pm"><span class="pp">'+n.phon+'</span><span class="po">'+n.pos+'</span></div>'+
     '<div class="pd">'+n.def+'</div>'+(n.ex?'<div class="pe">'+n.ex+'</div>':'')+
     (n.root?'<div class="pr">🧬 '+n.root+'</div>':'')+
     '<div class="prel"><h4>关联词 ('+n.conn.length+')</h4>'+n.conn.slice(0,12).map(c=>'<span onclick="goNode('+c.n.id+')">'+c.n.word+'</span>').join('')+'</div>'+
