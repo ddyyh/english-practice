@@ -90,7 +90,7 @@ NODES.forEach(n=>{n.r=6+Math.min(14,n.conn.length*1.5);});
 
 // ── FORCE LAYOUT ──
 (function force(iter){
-  const WW=2000,HH=2000,cx=WW/2,cy=HH/2;
+  const WW=2800,HH=2800,cx=WW/2,cy=HH/2;
   NODES.forEach(n=>{n.x=cx+(Math.random()-0.5)*800;n.y=cy+(Math.random()-0.5)*800;n.vx=0;n.vy=0;});
   for(let t=0;t<iter;t++){
     const tmp=Math.max(0.1,1-t/iter);
@@ -112,7 +112,7 @@ NODES.forEach(n=>{n.r=6+Math.min(14,n.conn.length*1.5);});
 
 // ── CANVAS ──
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
-let vx=0,vy=0,zm=0.35,hover=null,drag=null,pan=false,psx=0,psy=0,pvx=0,pvy=0,sub=null,visible=NODES;
+let vx=0,vy=0,zm=0.28,hover=null,drag=null,pan=false,psx=0,psy=0,pvx=0,pvy=0,sub=null,visible=NODES;
 
 function resize(){cv.width=window.innerWidth;cv.height=window.innerHeight;render();}
 resize();window.addEventListener('resize',resize);
@@ -137,7 +137,7 @@ function render(){
   // Edges
   visible.forEach(n=>{n.conn.forEach(c=>{if(!vs.has(c.n.id)||c.n.id<n.id)return;const e=ET[c.t];if(!e||!e.on)return;const p1=wp(n),p2=wp(c.n),hl=(hover===n||hover===c.n);ctx.strokeStyle=e.c;ctx.globalAlpha=hl?0.55:0.1;ctx.lineWidth=hl?1.5:0.5;ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.stroke();ctx.globalAlpha=1;});});
   // Nodes
-  visible.forEach(n=>{const p=wp(n),r=Math.max(sub?9:5,n.r*zm*(sub?2.8:1.4)),hl=(hover===n);ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fillStyle=hl?(n.m==='mastered'?'#78787a':n.m==='unknown'?'#ff453a':n.m==='passive'?'#ff9f0a':'#fff'):nc(n);ctx.fill();if(hl||r>4){ctx.strokeStyle=hl?'#fff':'rgba(255,255,255,0.12)';ctx.lineWidth=hl?2:0.5;ctx.stroke();}if(zm>0.15||hl){ctx.fillStyle=hl?'#fff':n.m==='mastered'?'rgba(255,255,255,0.2)':'rgba(255,255,255,0.5)';ctx.font=Math.max(sub?40:18,(sub?4:2)*r*1.1)+'px -apple-system,sans-serif';ctx.textAlign='center';ctx.fillText(n.word,p.x,p.y+r+14);}});
+  visible.forEach(n=>{const p=wp(n),r=Math.max(sub?8:4.5,n.r*zm*(sub?2.5:1.3)),hl=(hover===n);ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fillStyle=hl?(n.m==='mastered'?'#78787a':n.m==='unknown'?'#ff453a':n.m==='passive'?'#ff9f0a':'#fff'):nc(n);ctx.fill();if(hl||r>4){ctx.strokeStyle=hl?'#fff':'rgba(255,255,255,0.12)';ctx.lineWidth=hl?2:0.5;ctx.stroke();}if(zm>0.15||hl){ctx.fillStyle=hl?'#fff':n.m==='mastered'?'rgba(255,255,255,0.2)':'rgba(255,255,255,0.5)';ctx.font=Math.max(sub?28:14,(sub?3.5:1.8)*r*1.1)+'px -apple-system,sans-serif';ctx.textAlign='center';ctx.fillText(n.word,p.x,p.y+r+12);}});
 }
 
 // ── INTERACTION ──
@@ -160,7 +160,7 @@ cv.addEventListener('mouseleave',()=>{drag=null;pan=false;hover=null;render();do
 cv.addEventListener('wheel',e=>{e.preventDefault();const mx=e.clientX,my=e.clientY,zf=e.deltaY<0?1.1:0.9;vx=mx-(mx-vx)*zf;vy=my-(my-vy)*zf;zm=Math.max(0.1,Math.min(1.8,zm*zf));render();},{passive:false});
 cv.addEventListener('click',()=>{
   if(!drag&&hover){
-    const op=document.getElementById('ratingPopover');if(op)op.remove();
+    const op=document.getElementById('ratingPopover');if(op)op.remove();const ip=document.getElementById('infoPopover');if(ip)ip.remove();
     sub=hover;updateVisible();zm=0.55;
     vx=cv.width/2-hover.x*zm;vy=cv.height/2-hover.y*zm;
     document.getElementById('status').innerHTML='🎯 聚焦: <b style=color:#fff>'+hover.word+'</b> · 仅显示关联词 · 双击空白返回全局';
@@ -189,15 +189,30 @@ function showRatingPopover(n){
   div.style.left=(p.x-90)+'px';div.style.top=(p.y+n.r*zm+16)+'px';
   div.innerHTML='<button style="padding:9px 16px;border-radius:100px;border:none;background:rgba(255,69,58,0.15);color:#ff453a;font-size:0.85rem;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all 0.15s;" onmouseover="this.style.background=\"rgba(255,69,58,0.28)\"" onmouseout="this.style.background=\"rgba(255,69,58,0.15)\"" onclick="markNodePop('+n.id+',"unknown")">😰 不认识</button><button style="padding:9px 16px;border-radius:100px;border:none;background:rgba(255,159,10,0.15);color:#ff9f0a;font-size:0.85rem;cursor:pointer;font-family:inherit;white-space:nowrap;" onclick="markNodePop('+n.id+',"passive")">🤔 模糊</button><button style="padding:9px 16px;border-radius:100px;border:none;background:rgba(48,209,88,0.15);color:#30d158;font-size:0.85rem;cursor:pointer;font-family:inherit;white-space:nowrap;" onclick="markNodePop('+n.id+',"mastered")">😎 掌握</button>';
   document.body.appendChild(div);
+  showInfoCard(n);
 }
 function markNodePop(id,level){
   NODES[id].m=level;
   try{const d=JSON.parse(localStorage.getItem('vocab_screening_v3')||'{"results":{},"answers":{},"screened":0}');if(!(id in d.results))d.screened++;d.results[id]=level;localStorage.setItem('vocab_screening_v3',JSON.stringify(d));}catch(e){}
   render();
-  const pop=document.getElementById('ratingPopover');
-  if(pop)pop.remove();
+  const pop=document.getElementById('ratingPopover');if(pop)pop.remove();const ip=document.getElementById('infoPopover');if(ip)ip.remove();
   // Re-show with updated state if still focused
   if(sub&&sub.id===id)showRatingPopover(NODES[id]);
+}
+
+
+// ── INFO CARD (root/affix in focus mode) ──
+function showInfoCard(n){
+  const old=document.getElementById('infoPopover');
+  if(old)old.remove();
+  if(!n.root)return;
+  const p=wp(n);
+  const card=document.createElement('div');
+  card.id='infoPopover';
+  card.style.cssText='position:fixed;z-index:15;background:rgba(36,36,38,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:10px 14px;border-radius:14px;max-width:280px;box-shadow:0 4px 24px rgba(0,0,0,0.5);font-size:0.78rem;color:var(--text2);line-height:1.5;transition:all 0.25s ease;';
+  card.style.left=(p.x-140)+'px';card.style.top=(p.y+n.r*zm+68)+'px';
+  card.innerHTML='<div style="font-size:0.65rem;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">🧬 词根拆解</div><div>'+n.root+'</div>';
+  document.body.appendChild(card);
 }
 
 // ── DETAIL PANEL ──
@@ -221,7 +236,7 @@ function mark(id,level){
 }
 
 // ── CONTROLS ──
-function resetView(){const p=document.getElementById('ratingPopover');if(p)p.remove();sub=null;updateVisible();vx=0;vy=0;zm=0.35;render();document.getElementById('status').innerHTML='🌐 全局视图 · 500词 · 单击词进入聚焦 | 双击词看详情 | 滚轮缩放';}
+function resetView(){const p=document.getElementById('ratingPopover');if(p)p.remove();const ip=document.getElementById('infoPopover');if(ip)ip.remove();sub=null;updateVisible();vx=cv.width/2-1400*zm;vy=cv.height/2-1400*zm;zm=0.28;render();document.getElementById('status').innerHTML='🌐 全局视图 · 500词 · 单击词进入聚焦 | 双击词看详情 | 滚轮缩放';}
 function jumpWeakest(){
   const unk=NODES.filter(n=>n.m==='unknown'),pass=NODES.filter(n=>n.m==='passive');
   const pool=unk.length>0?unk:pass.length>0?pass:NODES;
@@ -242,7 +257,7 @@ setTimeout(jumpWeakest,400);
 
 // Keyboard
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){sub=null;updateVisible();resetView();render();document.getElementById('panel').classList.remove('open');document.getElementById('status').innerHTML='🌐 全局视图 · 500词 · 单击词进入聚焦 | 双击词看详情 | 滚轮缩放';}
+  if(e.key==='Escape'){sub=null;updateVisible();resetView();render();document.getElementById('panel').classList.remove('open');const ip2=document.getElementById('infoPopover');if(ip2)ip2.remove();document.getElementById('status').innerHTML='🌐 全局视图 · 500词 · 单击词进入聚焦 | 双击词看详情 | 滚轮缩放';}
   if(e.key==='f')jumpWeakest();
   if(e.key==='r')jumpRandom();
 });
