@@ -138,7 +138,7 @@ function render(){
   // Edges
   visible.forEach(n=>{n.conn.forEach(c=>{if(!vs.has(c.n.id)||c.n.id<n.id)return;const e=ET[c.t];if(!e||!e.on)return;const p1=wp(n),p2=wp(c.n),hl=(hover===n||hover===c.n);ctx.strokeStyle=e.c;ctx.globalAlpha=hl?0.55:0.1;ctx.lineWidth=hl?1.5:0.5;ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.stroke();ctx.globalAlpha=1;});});
   // Nodes
-  visible.forEach(n=>{const p=wp(n),r=Math.max(sub?8:4.5,n.r*zm*(sub?2.5:1.3)),hl=(hover===n);ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fillStyle=hl?(n.m==='mastered'?'#78787a':n.m==='unknown'?'#ff453a':n.m==='passive'?'#ff9f0a':'#fff'):nc(n);ctx.fill();if(hl||r>4){ctx.strokeStyle=hl?'#fff':'rgba(255,255,255,0.12)';ctx.lineWidth=hl?2:0.5;ctx.stroke();}if(zm>0.15||hl){ctx.fillStyle=hl?'#fff':n.m==='mastered'?'rgba(255,255,255,0.2)':'rgba(255,255,255,0.5)';ctx.font=sub?26:14+'px -apple-system,sans-serif';ctx.textAlign='center';ctx.fillText(n.word,p.x,p.y+r+(sub?18:12));}});
+  visible.forEach(n=>{const isFocus=n===sub,sc=isFocus?2.2:1;const p=wp(n),r=Math.max(sub?8:4.5,n.r*zm*(sub?2.5:1.3))*sc,hl=(hover===n);ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fillStyle=hl?(n.m==='mastered'?'#78787a':n.m==='unknown'?'#ff453a':n.m==='passive'?'#ff9f0a':'#fff'):nc(n);ctx.fill();if(hl||r>4){ctx.strokeStyle=hl?'#fff':'rgba(255,255,255,0.12)';ctx.lineWidth=hl?2:0.5;ctx.stroke();}if(zm>0.15||hl){ctx.fillStyle=hl?'#fff':n.m==='mastered'?'rgba(255,255,255,0.2)':'rgba(255,255,255,0.5)';ctx.font=sub?26:14+'px -apple-system,sans-serif';ctx.textAlign='center';ctx.fillText(n.word,p.x,p.y+r+(sub?18:12));}});
 }
 
 // ── INTERACTION ──
@@ -224,7 +224,7 @@ function showInfoCard(n){
   var relatives=Object.entries(family.words).filter(function(e){return e[0]!==n.word&&NM[e[0]];});
   if(!relatives.length)return;
   var card=document.createElement("div");card.id="infoPopover";
-  card.style.cssText="position:fixed;z-index:15;left:12px;top:50%;transform:translateY(-50%);background:rgba(36,36,38,0.95);backdrop-filter:blur(12px);padding:14px 16px;border-radius:16px;max-width:270px;box-shadow:0 4px 32px rgba(0,0,0,0.5);font-size:0.78rem;color:var(--text2);line-height:1.6;";
+  card.style.cssText="position:fixed;z-index:15;left:60px;top:50%;transform:translateY(-50%);background:rgba(36,36,38,0.95);backdrop-filter:blur(12px);padding:14px 16px;border-radius:16px;max-width:270px;box-shadow:0 4px 32px rgba(0,0,0,0.5);font-size:0.78rem;color:var(--text2);line-height:1.6;";
   var parts=[];
   parts.push("<div style='font-size:0.7rem;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px'>🧬 词根家族: "+family.root+"</div>");
   parts.push("<div style='color:#fff;font-weight:700;margin-bottom:8px'>▶ "+n.word+" ← 当前词</div>");
