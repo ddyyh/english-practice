@@ -42,7 +42,8 @@ canvas{position:fixed;top:0;left:0;z-index:1}
 <div class="top-bar"><h1>🕸️ Word Graph · 500词</h1><div class="btn-group"><button onclick="resetView()">🔍 全局</button><button onclick="jumpWeakest()">🎯 薄弱词</button><button onclick="jumpRandom()">⚡ 随机</button><button style="opacity:0.7" onclick="window.open('screening.html','_blank')">筛词</button><button style="opacity:0.7" onclick="window.open('flashcards.html','_blank')">造句</button></div></div>
 <div class="tooltip" id="tt"></div>
 <div class="panel" id="panel"><button class="close" onclick="document.getElementById('panel').classList.remove('open')">✕</button><div id="pcontent"></div></div>
-<div class="legend"><label><input type="checkbox" checked onchange="tgl('root')"><span class="dot" style="background:#30d158"></span>同根</label><label><input type="checkbox" checked onchange="tgl('syn')"><span class="dot" style="background:#0a84ff"></span>近义</label><label><input type="checkbox" checked onchange="tgl('ant')"><span class="dot" style="background:#ff453a"></span>反义</label><label><input type="checkbox" checked onchange="tgl('theme')"><span class="dot" style="background:#ff9f0a"></span>主题</label><label><input type="checkbox" checked onchange="tgl('coll')"><span class="dot" style="background:#aeaeb2"></span>搭配</label></div>
+<div class="legend"><div style="font-size:0.6rem;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">连线颜色</div><label title="共享同一拉丁/希腊词根的词，如 expect→inspect→respect（都来自 -spect- 看）"><input type="checkbox" checked onchange="tgl('root')"><span class="dot" style="background:#30d158"></span>同根词族</label><label title="意思相近可以互换的词"><input type="checkbox" checked onchange="tgl('syn')"><span class="dot" style="background:#0a84ff"></span>近义词</label><label title="意思相反的词"><input type="checkbox" checked onchange="tgl('ant')"><span class="dot" style="background:#ff453a"></span>反义词</label><label title="属于同一使用场景的词，如 deadline、budget、schedule 都是工作场景"><input type="checkbox" checked onchange="tgl('theme')"><span class="dot" style="background:#ff9f0a"></span>同场景</label><label title="经常一起出现的搭配词，如 meet + deadline"><input type="checkbox" checked onchange="tgl('coll')"><span class="dot" style="background:#aeaeb2"></span>常见搭配</label></div>
+<div id="status" style="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(36,36,38,0.85);padding:6px 16px;border-radius:100px;font-size:0.72rem;color:var(--text3);pointer-events:none;transition:all 0.3s;">🌐 全局视图 · 500词 · 单击词进入聚焦 | 双击词看详情 | 滚轮缩放</div>
 
 <script src="wordbank.js"></script>
 <script src="word-families.js"></script>
@@ -157,8 +158,8 @@ cv.addEventListener('mousedown',e=>{
 cv.addEventListener('mouseup',()=>{drag=null;pan=false;});
 cv.addEventListener('mouseleave',()=>{drag=null;pan=false;hover=null;render();document.getElementById('tt').style.opacity='0';});
 cv.addEventListener('wheel',e=>{e.preventDefault();const mx=e.clientX,my=e.clientY,zf=e.deltaY<0?1.1:0.9;vx=mx-(mx-vx)*zf;vy=my-(my-vy)*zf;zm=Math.max(0.1,Math.min(1.8,zm*zf));render();},{passive:false});
-cv.addEventListener('click',()=>{if(!drag&&hover){sub=hover;updateVisible();vx=cv.width/2-hover.x*zm;vy=cv.height/2-hover.y*zm;render();}});
-cv.addEventListener('dblclick',e=>{const n=fn(e.clientX,e.clientY);if(n){openDetail(n);}else{sub=null;updateVisible();resetView();render();}});
+cv.addEventListener('click',()=>{if(!drag&&hover){sub=hover;updateVisible();zm=0.55;vx=cv.width/2-hover.x*zm;vy=cv.height/2-hover.y*zm;document.getElementById('status').innerHTML='🎯 聚焦: <b style=color:#fff>'+hover.word+'</b> · 仅显示关联词 · 双击空白返回全局';render();}});
+cv.addEventListener('dblclick',e=>{const n=fn(e.clientX,e.clientY);if(n){openDetail(n);}else{sub=null;updateVisible();resetView();render();document.getElementById('status').innerHTML='🌐 全局视图 · 500词 · 单击词进入聚焦 | 双击词看详情 | 滚轮缩放';}});
 cv.addEventListener('contextmenu',e=>{e.preventDefault();});
 
 // ── DETAIL PANEL ──
@@ -182,12 +183,14 @@ function mark(id,level){
 }
 
 // ── CONTROLS ──
-function resetView(){sub=null;updateVisible();vx=0;vy=0;zm=0.35;render();}
+function resetView(){sub=null;updateVisible();vx=0;vy=0;zm=0.35;render();document.getElementById('status').innerHTML='🌐 全局视图 · 500词 · 单击词进入聚焦 | 双击词看详情 | 滚轮缩放';}
 function jumpWeakest(){
   const unk=NODES.filter(n=>n.m==='unknown'),pass=NODES.filter(n=>n.m==='passive');
   const pool=unk.length>0?unk:pass.length>0?pass:NODES;
   const n=pool[Math.floor(Math.random()*pool.length)];
-  sub=n;updateVisible();vx=cv.width/2-n.x*zm;vy=cv.height/2-n.y*zm;render();
+  sub=n;updateVisible();zm=0.55;vx=cv.width/2-n.x*zm;vy=cv.height/2-n.y*zm;
+  document.getElementById('status').innerHTML='🎯 聚焦: <b style=color:#fff>'+n.word+'</b> · 你标记为<font color='+(n.m==='unknown'?'#ff453a':'#ff9f0a')+'>'+(n.m==='unknown'?'不认识':'模糊')+'</font> · 双击空白返回全局';
+  render();
 }
 function jumpRandom(){
   const pool=NODES.filter(n=>n.m!=='mastered');
@@ -201,7 +204,7 @@ setTimeout(jumpWeakest,400);
 
 // Keyboard
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){sub=null;updateVisible();resetView();render();document.getElementById('panel').classList.remove('open');}
+  if(e.key==='Escape'){sub=null;updateVisible();resetView();render();document.getElementById('panel').classList.remove('open');document.getElementById('status').innerHTML='🌐 全局视图 · 500词 · 单击词进入聚焦 | 双击词看详情 | 滚轮缩放';}
   if(e.key==='f')jumpWeakest();
   if(e.key==='r')jumpRandom();
 });
