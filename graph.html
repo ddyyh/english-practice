@@ -3,186 +3,133 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Word Graph — 单词网络</title>
+<title>Word Graph</title>
 <style>
 :root{
-  --bg:#1c1c1e; --card:#2c2c2e; --cardHover:#38383a;
-  --text:#f5f5f7; --text2:#aeaeb2; --text3:#636366;
-  --accent:#0a84ff; --accentBg:rgba(10,132,255,0.12);
-  --green:#30d158; --orange:#ff9f0a; --red:#ff453a; --purple:#bf5af2;
-  --edge-root:#30d158; --edge-syn:#0a84ff; --edge-ant:#ff453a;
-  --edge-theme:#ff9f0a; --edge-coll:#aeaeb2;
-  --shadow:0 2px 16px rgba(0,0,0,0.3), 0 0 0 0.5px rgba(255,255,255,0.06);
-  --shadowLg:0 8px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.08);
-  --radius:18px; --radiusSm:12px; --radiusPill:100px;
+  --bg:#1a1a1c; --panel:#242426; --text:#f5f5f7; --text2:#aeaeb2; --text3:#636366;
+  --accent:#0a84ff; --green:#30d158; --orange:#ff9f0a; --red:#ff453a; --purple:#bf5af2;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 body{
-  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',system-ui,sans-serif;
-  background:var(--bg); color:var(--text); overflow:hidden; height:100dvh; width:100vw;
-  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-  user-select:none; -webkit-user-select:none;
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
+  background:var(--bg);color:var(--text);overflow:hidden;height:100dvh;width:100vw;
+  -webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none;
 }
+canvas{position:fixed;top:0;left:0;z-index:1;}
 
-#graphSvg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none;}
-#graphSvg line,#graphSvg text{transition:opacity 0.4s ease;}
-
-/* ── Top Bar (frosted glass) ── */
+/* Top bar */
 .top-bar{
-  position:fixed;top:0;left:0;right:0;z-index:10;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:12px 20px; gap:12px;
-  background:rgba(28,28,30,0.72); backdrop-filter:blur(24px) saturate(180%);
-  -webkit-backdrop-filter:blur(24px) saturate(180%);
-  border-bottom:0.5px solid rgba(255,255,255,0.08);
+  position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;
+  justify-content:space-between;padding:10px 16px;gap:12px;
+  background:rgba(26,26,28,0.7);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  pointer-events:none;
 }
-.top-bar h1{font-size:1.05rem;font-weight:700;color:var(--text);letter-spacing:-0.3px;white-space:nowrap;}
+.top-bar>*{pointer-events:auto;}
+.top-bar h1{font-size:0.95rem;font-weight:700;letter-spacing:-0.3px;white-space:nowrap;}
 .top-bar .btn-group{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
 .top-bar button{
-  background:rgba(255,255,255,0.06); border:none; color:var(--text2);
-  padding:7px 14px; border-radius:var(--radiusPill); font-size:0.78rem; font-weight:500;
-  cursor:pointer; font-family:inherit; transition:all 0.2s ease;
-  -webkit-tap-highlight-color:transparent; letter-spacing:-0.2px;
+  background:rgba(255,255,255,0.06);border:none;color:var(--text2);padding:6px 12px;
+  border-radius:100px;font-size:0.73rem;font-weight:500;cursor:pointer;font-family:inherit;
+  transition:all 0.2s;
 }
 .top-bar button:hover{background:rgba(255,255,255,0.12);color:var(--text);}
-.top-bar button.accent{background:var(--accent);color:#fff;font-weight:600;}
-.top-bar button.accent:hover{background:#1a8eff;}
+.top-bar button.active{background:var(--accent);color:#fff;}
 
-/* ── Edge Legend (frosted panel) ── */
-.edge-legend{
-  position:fixed;right:16px;top:110px;z-index:10;
-  display:flex;flex-direction:column;gap:6px;
-  background:rgba(44,44,46,0.8); backdrop-filter:blur(20px);
-  -webkit-backdrop-filter:blur(20px);
-  padding:12px 14px; border-radius:var(--radiusSm);
-  box-shadow:var(--shadow);
+/* Tooltip */
+.tooltip{
+  position:fixed;z-index:5;pointer-events:none;opacity:0;transition:opacity 0.15s;
+  background:rgba(36,36,38,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  padding:8px 14px;border-radius:12px;font-size:0.78rem;max-width:200px;
+  box-shadow:0 4px 24px rgba(0,0,0,0.4);
 }
-.edge-legend label{
-  font-size:0.7rem;display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--text2);font-weight:450;
-}
-.edge-legend input[type=checkbox]{appearance:none;-webkit-appearance:none;width:14px;height:14px;border-radius:4px;border:1px solid var(--text3);cursor:pointer;position:relative;transition:all 0.15s;}
-.edge-legend input[type=checkbox]:checked{background:var(--accent);border-color:var(--accent);}
-.edge-legend input[type=checkbox]:checked::after{content:'✓';position:absolute;top:-1px;left:2px;font-size:10px;color:#fff;}
-.e-dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+.tooltip .t-word{font-weight:700;color:#fff;}
+.tooltip .t-phon{color:var(--text2);font-size:0.7rem;margin-left:6px;}
+.tooltip .t-def{color:var(--text2);font-size:0.7rem;margin-top:2px;line-height:1.3;}
 
-/* ── Peripheral Nodes ── */
-.graph-node{
-  position:fixed;z-index:2;
-  background:var(--card); border-radius:var(--radiusSm);
-  padding:14px 18px; cursor:pointer; text-align:center; min-width:100px;
-  box-shadow:var(--shadow); border:0.5px solid rgba(255,255,255,0.04);
-  transition:all 0.35s cubic-bezier(0.25,0.1,0.25,1);
-  -webkit-tap-highlight-color:transparent;
+/* Detail panel */
+.detail-panel{
+  position:fixed;right:-380px;top:0;bottom:0;width:360px;z-index:20;
+  background:var(--panel);border-left:0.5px solid rgba(255,255,255,0.08);
+  padding:24px 22px;overflow-y:auto;transition:right 0.35s cubic-bezier(0.25,0.1,0.25,1);
+  box-shadow:-4px 0 40px rgba(0,0,0,0.5);
 }
-.graph-node:hover,.graph-node:active{
-  background:var(--cardHover);
-  box-shadow:var(--shadowLg);
-  transform:scale(1.06) translateY(-2px);
+.detail-panel.open{right:0;}
+.detail-panel .close-btn{
+  position:absolute;top:16px;right:16px;width:28px;height:28px;border-radius:50%;
+  background:rgba(255,255,255,0.06);border:none;color:var(--text2);font-size:1rem;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
 }
-.graph-node .n-word{font-size:0.88rem;font-weight:650;color:var(--text);letter-spacing:-0.2px;}
-.graph-node .n-zh{font-size:0.7rem;color:var(--text2);margin-top:3px;}
-.graph-node .n-edge{font-size:0.62rem;font-weight:500;text-transform:uppercase;letter-spacing:0.5px;margin-top:5px;}
+.detail-panel .d-word{font-size:1.8rem;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px;}
+.detail-panel .d-meta{display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap;}
+.detail-panel .d-pos{background:rgba(10,132,255,0.12);color:var(--accent);padding:3px 10px;border-radius:100px;font-size:0.7rem;}
+.detail-panel .d-phon{color:var(--text2);font-size:0.82rem;}
+.detail-panel .d-def{color:var(--text2);font-size:0.9rem;line-height:1.5;margin:12px 0;}
+.detail-panel .d-ex{background:rgba(255,255,255,0.03);border-left:2.5px solid var(--accent);padding:10px 14px;border-radius:0 10px 10px 0;font-size:0.82rem;color:var(--text);font-style:italic;line-height:1.5;margin:12px 0;}
+.detail-panel .d-root{font-size:0.75rem;color:var(--text3);margin:8px 0;line-height:1.4;}
+.detail-panel .d-related{margin-top:16px;}
+.detail-panel .d-related h4{font-size:0.75rem;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.detail-panel .d-related .rel-tag{display:inline-block;padding:4px 10px;border-radius:100px;font-size:0.72rem;margin:3px 4px 3px 0;cursor:pointer;transition:all 0.15s;background:rgba(255,255,255,0.04);color:var(--text2);}
+.detail-panel .d-related .rel-tag:hover{background:rgba(255,255,255,0.1);color:#fff;}
+.detail-panel .rating-row{display:flex;gap:8px;margin-top:16px;}
+.detail-panel .rating-row button{flex:1;padding:8px 4px;border-radius:100px;border:none;background:rgba(255,255,255,0.04);color:var(--text2);font-size:0.72rem;cursor:pointer;font-family:inherit;transition:all 0.2s;}
+.detail-panel .rating-row button:hover{background:rgba(255,255,255,0.08);}
 
-/* ── Center Card ── */
-.graph-center{
-  position:fixed;z-index:3;
-  background:var(--card); border-radius:22px;
-  padding:28px 30px; width:320px; text-align:center;
-  box-shadow:var(--shadowLg);
-  border:1px solid rgba(255,255,255,0.06);
-  transition:all 0.5s cubic-bezier(0.25,0.1,0.25,1);
-  -webkit-tap-highlight-color:transparent;
+/* Edge legend */
+.legend{
+  position:fixed;right:12px;top:90px;z-index:8;display:flex;flex-direction:column;gap:5px;
+  background:rgba(36,36,38,0.7);backdrop-filter:blur(16px);padding:10px 12px;border-radius:10px;
 }
-.graph-center .c-word{font-size:2rem;font-weight:780;color:var(--text);letter-spacing:-0.5px;line-height:1.1;}
-.graph-center .c-meta{display:flex;align-items:center;justify-content:center;gap:8px;margin:8px 0;flex-wrap:wrap;}
-.graph-center .c-phon{font-size:0.82rem;color:var(--text2);letter-spacing:0.3px;}
-.graph-center .c-pos{
-  display:inline-block;background:var(--accentBg);color:var(--accent);
-  padding:3px 10px;border-radius:var(--radiusPill);font-size:0.7rem;font-weight:550;
-}
-.graph-center .c-level{
-  display:inline-block;padding:3px 10px;border-radius:var(--radiusPill);font-size:0.7rem;font-weight:550;
-}
-.graph-center .c-def{font-size:0.92rem;color:var(--text2);margin:10px 0;line-height:1.5;}
-.graph-center .c-ex{
-  background:rgba(255,255,255,0.025);border-left:2.5px solid var(--accent);
-  padding:10px 14px;border-radius:0 10px 10px 0;font-size:0.84rem;color:var(--text);font-style:italic;
-  margin:10px 0;text-align:left;line-height:1.5;
-}
-.graph-center .c-root{font-size:0.75rem;color:var(--text3);margin:8px 0;line-height:1.4;}
+.legend label{font-size:0.65rem;display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--text3);font-weight:500;}
+.legend input{accent-color:var(--accent);} .legend .dot{width:6px;height:6px;border-radius:50%;}
 
-/* ── Rating Pills ── */
-.rating-row{display:flex;gap:8px;justify-content:center;margin-top:14px;}
-.rating-row button{
-  flex:1;padding:9px 6px;border-radius:var(--radiusPill);border:none;
-  background:rgba(255,255,255,0.04);color:var(--text2);font-size:0.73rem;font-weight:550;
-  cursor:pointer;font-family:inherit;transition:all 0.2s ease;
-  -webkit-tap-highlight-color:transparent;
+/* Sub-graph hint */
+.sub-hint{
+  position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:8;
+  background:var(--panel);padding:8px 18px;border-radius:100px;font-size:0.73rem;color:var(--text2);
+  box-shadow:0 4px 20px rgba(0,0,0,0.4);display:none;
 }
-.rating-row button:hover{background:rgba(255,255,255,0.08);}
-.rating-row .r-unknown.active,.rating-row .r-unknown:hover{background:rgba(255,69,58,0.15);color:var(--red);}
-.rating-row .r-vague.active,.rating-row .r-vague:hover{background:rgba(255,159,10,0.15);color:var(--orange);}
-.rating-row .r-master.active,.rating-row .r-master:hover{background:rgba(48,209,88,0.15);color:var(--green);}
+.sub-hint.show{display:block;}
 
-/* ── Trail (bottom) ── */
-.trail-wrap{
-  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:10;
-  display:flex;gap:3px;align-items:center;flex-wrap:wrap;justify-content:center;
-  max-width:90vw;padding:8px 16px;
-  background:rgba(44,44,46,0.7);backdrop-filter:blur(20px);
-  -webkit-backdrop-filter:blur(20px);
-  border-radius:var(--radiusPill);box-shadow:var(--shadow);
-}
-.trail-wrap .t-node{
-  background:transparent;border:none;padding:4px 10px;border-radius:var(--radiusPill);
-  font-size:0.7rem;color:var(--text2);cursor:pointer;transition:all 0.15s;font-family:inherit;font-weight:500;
-}
-.trail-wrap .t-node:hover{background:rgba(255,255,255,0.08);color:var(--text);}
-.trail-wrap .t-arrow{color:var(--text3);font-size:0.6rem;margin:0 2px;}
-.trail-wrap .t-current{background:var(--accentBg);color:var(--accent);font-weight:600;}
-
-/* ── Responsive ── */
 @media(max-width:640px){
-  .graph-center{width:280px;padding:22px 20px;}
-  .graph-center .c-word{font-size:1.6rem;}
-  .graph-node{min-width:70px;padding:10px 12px;}
-  .graph-node .n-word{font-size:0.76rem;}
-  .edge-legend{right:6px;padding:8px 10px;gap:4px;}
-  .edge-legend label{font-size:0.64rem;}
-  .top-bar{padding:10px 12px;}
-  .top-bar h1{font-size:0.9rem;}
-  .top-bar button{padding:5px 10px;font-size:0.7rem;}
-  .rating-row button{font-size:0.68rem;padding:7px 4px;}
+  .detail-panel{width:100vw;right:-100vw;}
+  .top-bar{padding:8px 10px;}
+  .top-bar h1{font-size:0.8rem;}
+  .top-bar button{padding:5px 10px;font-size:0.68rem;}
+  .legend{right:4px;padding:6px 8px;}
 }
 </style>
 </head>
 <body>
 
-<svg id="graphSvg"></svg>
+<canvas id="c"></canvas>
 
-<!-- Top Bar -->
 <div class="top-bar">
-  <h1>🕸️ Word Graph</h1>
+  <h1>🕸️ Word Graph · 500词</h1>
   <div class="btn-group">
-    <button onclick="randomJump()">⚡ 随机跳转</button>
-    <button onclick="goBack()">← 后退</button>
-    <button onclick="resetGraph()">🔄 重置</button>
-    <button style="font-size:0.7rem;opacity:0.7;" onclick="window.open('screening.html','_blank')">筛词</button>
-    <button style="font-size:0.7rem;opacity:0.7;" onclick="window.open('flashcards.html','_blank')">造句</button>
+    <button onclick="resetView()">🔍 全局</button>
+    <button onclick="focusWeakest()">🎯 薄弱词</button>
+    <button onclick="randomJump()">⚡ 随机</button>
+    <button style="opacity:0.7" onclick="window.open('screening.html','_blank')">筛词</button>
+    <button style="opacity:0.7" onclick="window.open('flashcards.html','_blank')">造句</button>
   </div>
 </div>
 
-<!-- Legend -->
-<div class="edge-legend" id="edgeLegend">
-  <label><input type="checkbox" checked onchange="toggleEdges()" data-type="root"><span class="e-dot" style="background:var(--edge-root)"></span>同根词</label>
-  <label><input type="checkbox" checked onchange="toggleEdges()" data-type="syn"><span class="e-dot" style="background:var(--edge-syn)"></span>近义词</label>
-  <label><input type="checkbox" checked onchange="toggleEdges()" data-type="ant"><span class="e-dot" style="background:var(--edge-ant)"></span>反义词</label>
-  <label><input type="checkbox" checked onchange="toggleEdges()" data-type="theme"><span class="e-dot" style="background:var(--edge-theme)"></span>同主题</label>
-  <label><input type="checkbox" checked onchange="toggleEdges()" data-type="coll"><span class="e-dot" style="background:var(--edge-coll)"></span>搭配词</label>
+<div class="tooltip" id="tooltip"></div>
+
+<div class="detail-panel" id="detailPanel">
+  <button class="close-btn" onclick="closeDetail()">✕</button>
+  <div id="detailContent"></div>
 </div>
 
-<!-- Trail -->
-<div class="trail-wrap" id="trail"></div>
+<div class="sub-hint" id="subHint">双击空白返回全局视图</div>
+
+<div class="legend" id="legend">
+  <label><input type="checkbox" checked onchange="toggleEdge('root')"><span class="dot" style="background:#30d158"></span>同根</label>
+  <label><input type="checkbox" checked onchange="toggleEdge('syn')"><span class="dot" style="background:#0a84ff"></span>近义</label>
+  <label><input type="checkbox" checked onchange="toggleEdge('ant')"><span class="dot" style="background:#ff453a"></span>反义</label>
+  <label><input type="checkbox" checked onchange="toggleEdge('theme')"><span class="dot" style="background:#ff9f0a"></span>主题</label>
+  <label><input type="checkbox" checked onchange="toggleEdge('coll')"><span class="dot" style="background:#aeaeb2"></span>搭配</label>
+</div>
 
 <script src="wordbank.js"></script>
 <script src="word-families.js"></script>
@@ -190,185 +137,352 @@ body{
 // ============================================================
 // DATA
 // ============================================================
-const WORD_BANK = WORD_BANK_W;
+const ANTONYMS={accept:'refuse',refuse:'accept',increase:'decrease',decrease:'increase',temporary:'permanent',permanent:'temporary',positive:'negative',negative:'positive',generous:'selfish',selfish:'generous',external:'internal',internal:'external',majority:'minority',minority:'majority',advantage:'disadvantage',disadvantage:'advantage',guilty:'innocent',innocent:'guilty',formal:'casual',casual:'formal'};
+const THEMES={Work:['schedule','deadline','budget','colleague','presentation','interview','promote','negotiate','manage','achieve','goal','strategy','perform','contribute','cooperate','feedback','compromise','responsibility','appointment','customer','policy','procedure','application','department','contract','agreement'],Emotions:['disappointed','grateful','proud','jealous','guilty','anxious','nervous','relieved','confident','confused','annoyed','embarrassed','curious','brave','patient','generous','selfish','honest','eager','reluctant','calm','sensitive','tough','desperate','enthusiastic','innocent','regret','suffer','comfort','praise'],Communication:['conversation','dialogue','argument','debate','negotiate','persuade','suggest','mention','describe','explain','express','declare','emphasize','summarize','request','complain','apologize','respond','interrupt','criticize','warn','promise','insist','advocate','acknowledge','inform','indicate','interpret'],Tech:['access','device','network','data','platform','application','install','develop','design','create','digital','software','internet','connect','efficient','transform','research','analysis','solution','capture','display','signal','generate','implement','program','automate','artificial'],Daily:['habit','routine','comfort','convenient','waste','bother','manage','handle','deal','struggle','survive','balance','afford','prefer','prepare','organize','arrange','cancel','decide','choose','option','opportunity','risk','effort','attention','progress','improve','reduce','adjust','adapt'],Learning:['research','analysis','definition','concept','principle','theory','evidence','prove','demonstrate','examine','evaluate','assess','determine','identify','recognize','realize','discover','explore','conclude','summarize','illustrate','define','describe','compare','contrast','calculate','measure','concentrate','focus','understand'],Change:['increase','decrease','improve','reduce','develop','transform','evolve','adapt','adjust','progress','decline','expand','extend','eliminate','replace','reform','convert','grow','rise','fall','emerge','disappear','create','destroy','establish','abandon'],Society:['culture','tradition','community','population','economy','government','policy','election','justice','rights','responsibility','freedom','conflict','protest','reform','education','environment','resource','majority','minority','individual','society','global','local','public','private']};
+const WORD_THEMES={};Object.entries(THEMES).forEach(([t,ws])=>{ws.forEach(w=>{if(!WORD_THEMES[w])WORD_THEMES[w]=[];WORD_THEMES[w].push(t);});});
 
-const ANTONYMS = {
-  accept:'refuse',refuse:'accept',increase:'decrease',decrease:'increase',
-  temporary:'permanent',permanent:'temporary',positive:'negative',negative:'positive',
-  generous:'selfish',selfish:'generous',external:'internal',internal:'external',
-  majority:'minority',minority:'majority',advantage:'disadvantage',disadvantage:'advantage',
-  guilty:'innocent',innocent:'guilty',formal:'casual',casual:'formal',
-};
+const EDGES={root:{color:'#30d158',active:true},syn:{color:'#0a84ff',active:true},ant:{color:'#ff453a',active:true},theme:{color:'#ff9f0a',active:true},coll:{color:'#aeaeb2',active:true}};
 
-const THEMES = {
-  'Work':['schedule','deadline','budget','colleague','presentation','interview','promote','negotiate','client','employ','manage','achieve','goal','strategy','perform','contribute','cooperate','feedback','compromise','responsibility','appointment','customer','policy','procedure','application','department','contract','agreement'],
-  'Emotions':['disappointed','grateful','proud','jealous','guilty','anxious','nervous','relieved','confident','confused','annoyed','embarrassed','curious','brave','patient','generous','selfish','honest','eager','reluctant','calm','sensitive','tough','desperate','enthusiastic','innocent','regret','suffer','comfort','praise'],
-  'Communication':['conversation','dialogue','argument','debate','negotiate','persuade','suggest','mention','describe','explain','express','declare','emphasize','summarize','request','complain','apologize','respond','interrupt','criticize','compliment','consult','warn','promise','insist','advocate','acknowledge','inform','indicate','interpret'],
-  'Tech/AI':['access','device','network','data','platform','application','install','develop','design','create','innovation','digital','software','hardware','internet','connect','efficient','transform','research','analysis','solution','artificial','capture','display','signal','generate','implement','program','compute','automate'],
-  'Daily':['habit','routine','comfort','convenient','waste','bother','manage','handle','deal','struggle','survive','balance','afford','prefer','prepare','organize','arrange','cancel','decide','choose','option','opportunity','risk','effort','attention','progress','improve','reduce','adjust','adapt'],
-  'Learning':['research','analysis','definition','concept','principle','theory','evidence','prove','demonstrate','examine','evaluate','assess','determine','identify','recognize','realize','discover','explore','conclude','summarize','illustrate','define','describe','compare','contrast','calculate','measure','concentrate','focus','understand'],
-  'Change':['increase','decrease','improve','reduce','develop','transform','evolve','adapt','adjust','progress','decline','expand','extend','eliminate','replace','reform','modify','convert','grow','rise','fall','emerge','disappear','create','destroy','establish','abandon','shift','alter','shrink'],
-  'Society':['culture','tradition','community','population','economy','government','policy','election','justice','rights','responsibility','freedom','conflict','protest','reform','education','environment','resource','poverty','wealth','majority','minority','individual','society','global','local','public','private','diverse','equality'],
-};
+// ============================================================
+// BUILD GRAPH
+// ============================================================
+const nodes=[],nodeMap={};
+WORD_BANK_W.forEach((w,i)=>{
+  const n={id:i,word:w.w,zh:WORDS_500[i]?.zh||'',phon:PH[w.w]||'',def:w.def,ex:w.ex,pos:w.pos,root:w.root||'',x:0,y:0,vx:0,vy:0,radius:0,connections:[],mastery:null};
+  nodes.push(n);nodeMap[w.w]=n;
+});
+const N=nodes.length;
 
-const WORD_THEMES = {};
-Object.entries(THEMES).forEach(([theme,words])=>{
-  words.forEach(w=>{if(!WORD_THEMES[w])WORD_THEMES[w]=[];WORD_THEMES[w].push(theme);});
+// Load screening
+try{const d=JSON.parse(localStorage.getItem('vocab_screening_v3')||'{}');if(d.results)Object.entries(d.results).forEach(([k,v])=>{const i=parseInt(k);if(i<N)nodes[i].mastery=v;});}catch(e){}
+
+// Build connections
+function addEdge(a,b,type,label){
+  if(a===b)return;
+  if(a.connections.find(c=>c.node===b&&c.type===type))return;
+  a.connections.push({node:b,type,label});
+}
+nodes.forEach(n=>{
+  const word=n.word;
+  // Root family
+  const f=findRootFamily(word);
+  if(f){Object.keys(f.words).forEach(w=>{if(w!==word&&nodeMap[w])addEdge(n,nodeMap[w],'root',f.root.split('=')[0].trim());});}
+  // Synonyms
+  const wd=WORD_BANK_W[n.id];
+  if(wd&&wd.syn){wd.syn.split(/[,，]/).forEach(s=>{const sw=s.trim();if(sw&&sw!==word&&nodeMap[sw])addEdge(n,nodeMap[sw],'syn','近义');});}
+  // Antonyms
+  if(ANTONYMS[word]&&nodeMap[ANTONYMS[word]])addEdge(n,nodeMap[ANTONYMS[word]],'ant','反义');
+  // Theme
+  if(WORD_THEMES[word])WORD_THEMES[word].forEach(t=>{(THEMES[t]||[]).forEach(tw=>{if(tw!==word&&nodeMap[tw]&&n.connections.filter(c=>c.type==='theme').length<2)addEdge(n,nodeMap[tw],'theme',t);});});
+  // Collocations
+  if(wd&&wd.coll)wd.coll.split('/').forEach(p=>{p.trim().split(/\s+/).filter(w=>w.length>3&&!/^(the|and|or|to|in|on|at|for|of|with|by|that|not|from)$/i.test(w)).forEach(cw=>{const cl=cw.replace(/[(),….;:]/g,'');if(cl!==word&&nodeMap[cl])addEdge(n,nodeMap[cl],'coll','搭配');});});
 });
 
-// ============================================================
-// STATE
-// ============================================================
-let currentWordId=null, history=[], activeEdges={root:true,syn:true,ant:true,theme:true,coll:true};
-let nodeElements=[];
+// Set radii based on connection count
+nodes.forEach(n=>{n.radius=6+Math.min(14,n.connections.length*1.5);});
 
 // ============================================================
-// GRAPH LOGIC
+// FORCE-DIRECTED LAYOUT
 // ============================================================
-function getWordData(word){ const i=WORD_BANK.findIndex(w=>w.w===word); return i>=0?WORD_BANK[i]:null; }
+function runForce(iterations=200){
+  const W=2000,H=2000;
+  const centerX=W/2,centerY=H/2;
+  // Init positions randomly around center
+  nodes.forEach(n=>{n.x=centerX+(Math.random()-0.5)*800;n.y=centerY+(Math.random()-0.5)*800;n.vx=0;n.vy=0;});
 
-function getConnections(word){
-  const result=[], wData=getWordData(word);
-  if(!wData)return result;
-  // Root family
-  const family=findRootFamily(word);
-  if(family){Object.keys(family.words).forEach(w=>{if(w!==word&&WORD_BANK.some(x=>x.w===w))result.push({word:w,type:'root',label:family.root.split('=')[0].trim()});});}
-  // Synonyms
-  if(wData.syn){wData.syn.split(/[,，]/).forEach(s=>{const sw=s.trim();if(sw&&sw!==word&&WORD_BANK.some(x=>x.w===sw&&!result.find(r=>r.word===sw)))result.push({word:sw,type:'syn',label:'近义'});});}
-  // Antonyms
-  if(ANTONYMS[word]){const ant=ANTONYMS[word];if(WORD_BANK.some(x=>x.w===ant))result.push({word:ant,type:'ant',label:'反义'});}
-  // Theme
-  if(WORD_THEMES[word]){WORD_THEMES[word].forEach(t=>{(THEMES[t]||[]).forEach(tw=>{if(tw!==word&&!result.find(r=>r.word===tw)&&WORD_BANK.some(x=>x.w===tw)&&result.filter(r=>r.type==='theme').length<3)result.push({word:tw,type:'theme',label:t});});});}
-  // Collocations
-  if(wData.coll){wData.coll.split('/').forEach(p=>{p.trim().split(/\s+/).filter(w=>w.length>3&&!/^(the|and|or|to|in|on|at|for|of|with|by|that|not|from)$/i.test(w)).forEach(cw=>{const cl=cw.replace(/[(),….;:]/g,'');if(cl!==word&&WORD_BANK.some(x=>x.w===cl)&&!result.find(r=>r.word===cl))result.push({word:cl,type:'coll',label:'搭配'});});});}
-  // Deduplicate
-  const seen=new Set([word]);
-  return result.filter(r=>{if(seen.has(r.word))return false;seen.add(r.word);return true;}).slice(0,8);
+  for(let iter=0;iter<iterations;iter++){
+    const temp=Math.max(0.1,1-iter/iterations);
+    // Repulsion
+    for(let i=0;i<N;i++){
+      for(let j=i+1;j<N;j++){
+        const dx=nodes[j].x-nodes[i].x,dy=nodes[j].y-nodes[i].y;
+        const dist=Math.max(1,Math.sqrt(dx*dx+dy*dy));
+        const force=200*temp/Math.max(dist,10);
+        const fx=dx/dist*force,fy=dy/dist*force;
+        nodes[i].vx-=fx;nodes[i].vy-=fy;
+        nodes[j].vx+=fx;nodes[j].vy+=fy;
+      }
+    }
+    // Attraction (springs along edges)
+    nodes.forEach(n=>{
+      n.connections.forEach(c=>{
+        const dx=c.node.x-n.x,dy=c.node.y-n.y;
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        const targetDist=60+n.radius+c.node.radius;
+        if(dist>targetDist){
+          const force=(dist-targetDist)*0.01*temp;
+          n.vx+=dx/dist*force;n.vy+=dy/dist*force;
+          c.node.vx-=dx/dist*force;c.node.vy-=dy/dist*force;
+        }
+      });
+    });
+    // Center gravity
+    nodes.forEach(n=>{
+      const dx=centerX-n.x,dy=centerY-n.y;
+      n.vx+=dx*0.001*temp;n.vy+=dy*0.001*temp;
+    });
+    // Apply + damp
+    nodes.forEach(n=>{n.vx*=0.85;n.vy*=0.85;n.x+=n.vx;n.y+=n.vy;n.x=Math.max(50,Math.min(W-50,n.x));n.y=Math.max(50,Math.min(H-50,n.y));});
+  }
 }
+runForce(200);
 
-function getScreeningLevel(word){
-  try{const d=JSON.parse(localStorage.getItem('vocab_screening_v3')||'{}');if(!d.results)return null;const i=WORD_BANK.findIndex(w=>w.w===word);return(i>=0&&i in d.results)?d.results[i]:null;}catch(e){return null;}
+// ============================================================
+// CANVAS SETUP
+// ============================================================
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+let W,H;
+
+function resize(){
+  W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;
 }
+resize();window.addEventListener('resize',()=>{resize();render();});
+
+// View state
+let viewX=0,viewY=0,zoom=0.35;
+let hovered=null,dragged=null,dragOX=0,dragOY=0;
+let panning=false,panSX=0,panSY=0,panVX=0,panVY=0;
+let subGraphRoot=null; // null = global view
+
+// Convert screen coords to world
+function toWorld(sx,sy){return{x:(sx-viewX)/zoom,y:(sy-viewY)/zoom};}
+function toScreen(wx,wy){return{wx*zoom+viewX,wy*zoom+viewY};}
 
 // ============================================================
 // RENDER
 // ============================================================
-function renderGraph(word){
-  currentWordId=word;
-  const wData=getWordData(word);if(!wData)return;
-  const connections=getConnections(word).filter(c=>activeEdges[c.type]);
-  const cx=window.innerWidth/2, cy=window.innerHeight*0.42;
-  const svg=document.getElementById('graphSvg');
-  const radius=Math.min(240,window.innerWidth*0.28);
+function getNodeScreenPos(n){
+  return {x:n.x*zoom+viewX,y:n.y*zoom+viewY};
+}
 
-  // Clear
-  nodeElements.forEach(el=>el.remove());nodeElements=[];
-  svg.setAttribute('viewBox',`0 0 ${window.innerWidth} ${window.innerHeight}`);
+function getNodeColor(n){
+  if(n.mastery==='mastered')return 'rgba(72,72,74,0.6)';
+  if(n.mastery==='unknown')return 'rgba(255,69,58,0.7)';
+  if(n.mastery==='passive')return 'rgba(255,159,10,0.7)';
+  return 'rgba(174,174,178,0.5)';
+}
 
-  const edgeColors={root:getComputedStyle(document.documentElement).getPropertyValue('--edge-root').trim(),syn:getComputedStyle(document.documentElement).getPropertyValue('--edge-syn').trim(),ant:getComputedStyle(document.documentElement).getPropertyValue('--edge-ant').trim(),theme:getComputedStyle(document.documentElement).getPropertyValue('--edge-theme').trim(),coll:getComputedStyle(document.documentElement).getPropertyValue('--edge-coll').trim()};
+function getVisibleNodes(){
+  if(!subGraphRoot)return nodes;
+  const seen=new Set([subGraphRoot.id]);
+  const queue=[subGraphRoot];
+  while(queue.length){
+    const n=queue.shift();
+    n.connections.forEach(c=>{
+      if(!seen.has(c.node.id)&&EDGES[c.type]&&EDGES[c.type].active){
+        // Include 2 levels deep
+        seen.add(c.node.id);
+        c.node.connections.forEach(c2=>{
+          if(!seen.has(c2.node.id)&&EDGES[c2.type]&&EDGES[c2.type].active)seen.add(c2.node.id);
+        });
+      }
+    });
+  }
+  return nodes.filter(n=>seen.has(n.id));
+}
 
-  let svgContent='';
-  connections.forEach((c,i)=>{
-    const angle=(i/connections.length)*2*Math.PI-Math.PI/2;
-    const nx=cx+radius*Math.cos(angle), ny=cy+radius*Math.sin(angle);
-    svgContent+=`<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${edgeColors[c.type]}" stroke-width="1.2" opacity="0.3"/><text x="${(cx+nx)/2}" y="${(cy+ny)/2-6}" fill="${edgeColors[c.type]}" font-size="10" text-anchor="middle" opacity="0.6" font-family="-apple-system,BlinkMacSystemFont,sans-serif">${c.label}</text>`;
-    // Node
-    const node=document.createElement('div');node.className='graph-node';
-    node.style.left=(nx-55)+'px';node.style.top=(ny-28)+'px';
-    const cw=getWordData(c.word);
-    node.innerHTML=`<div class="n-word">${c.word}</div><div class="n-zh">${cw?cw.zh||'':''}</div><div class="n-edge" style="color:${edgeColors[c.type]}">${c.label}</div>`;
-    node.onclick=()=>navigateTo(c.word);document.body.appendChild(node);nodeElements.push(node);
+function render(){
+  ctx.clearRect(0,0,W,H);
+  const visible=getVisibleNodes();
+  const visSet=new Set(visible.map(n=>n.id));
+
+  // Draw edges
+  visible.forEach(n=>{
+    n.connections.forEach(c=>{
+      if(!visSet.has(c.node.id))return;
+      if(c.node.id<n.id)return; // draw each edge once
+      const e=EDGES[c.type];if(!e||!e.active)return;
+      const p1=getNodeScreenPos(n),p2=getNodeScreenPos(c.node);
+      const highlight=(hovered===n||hovered===c.node);
+      ctx.strokeStyle=e.color;
+      ctx.globalAlpha=highlight?0.6:0.12;
+      ctx.lineWidth=highlight?1.5:0.5;
+      ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.stroke();
+      ctx.globalAlpha=1;
+    });
   });
-  svg.innerHTML=svgContent;
 
-  // Center
-  const center=document.createElement('div');center.className='graph-center';center.id='centerNode';
-  center.style.left=(cx-160)+'px';center.style.top=(cy-115)+'px';
-  const level=getScreeningLevel(word);
-  const lb=level==='mastered'?`<span class="c-level" style="background:rgba(48,209,88,0.12);color:var(--green);">✅ 已掌握</span>`:level==='unknown'?`<span class="c-level" style="background:rgba(255,69,58,0.12);color:var(--red);">❌ 不认识</span>`:level==='passive'?`<span class="c-level" style="background:rgba(255,159,10,0.12);color:var(--orange);">🟡 模糊</span>`:'';
-  center.innerHTML=`
-    <div class="c-word">${wData.w}</div>
-    <div class="c-meta"><span class="c-phon">${PH[wData.w]||''}</span><span class="c-pos">${wData.pos}</span>${lb}</div>
-    <div class="c-def">${wData.def}</div>
-    ${wData.ex?`<div class="c-ex">${wData.ex}</div>`:''}
-    ${wData.root?`<div class="c-root">🧬 ${wData.root}</div>`:''}
+  // Draw nodes
+  visible.forEach(n=>{
+    const p=getNodeScreenPos(n);
+    const r=Math.max(4,n.radius*zoom);
+    const highlight=(hovered===n);
+    ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);
+    const color=getNodeColor(n);
+    ctx.fillStyle=color;
+    if(highlight)ctx.fillStyle=n.mastery==='mastered'?'rgba(120,120,122,0.9)':n.mastery==='unknown'?'#ff453a':n.mastery==='passive'?'#ff9f0a':'#fff';
+    ctx.fill();
+    if(highlight||n.connections.length>5){
+      ctx.strokeStyle=highlight?'#fff':'rgba(255,255,255,0.15)';
+      ctx.lineWidth=highlight?2:0.5;ctx.stroke();
+    }
+    // Label
+    if(zoom>0.25||highlight){
+      ctx.fillStyle=highlight?'#fff':n.mastery==='mastered'?'rgba(255,255,255,0.25)':'rgba(255,255,255,0.55)';
+      ctx.font=`${Math.max(8,r*1.2)}px -apple-system,BlinkMacSystemFont,sans-serif`;
+      ctx.textAlign='center';ctx.fillText(n.word,p.x,p.y+r+12);
+    }
+  });
+
+  // Hovered node: highlight connections
+  if(hovered){
+    const p=getNodeScreenPos(hovered);
+    // Pulse ring
+    ctx.beginPath();ctx.arc(p.x,p.y,hovered.radius*zoom+4,0,Math.PI*2);
+    ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=2;ctx.stroke();
+  }
+}
+
+// ============================================================
+// INTERACTION
+// ============================================================
+function findNodeAt(sx,sy){
+  const{wx,wy}=toWorld(sx,sy);
+  const hitRadius=20/zoom;
+  for(let i=visibleNodes.length-1;i>=0;i--){
+    const n=visibleNodes[i];
+    const dx=n.x-wx,dy=n.y-wy;
+    if(Math.sqrt(dx*dx+dy*dy)<n.radius+hitRadius)return n;
+  }
+  return null;
+}
+
+let visibleNodes=nodes;
+canvas.addEventListener('mousemove',e=>{
+  const sx=e.clientX,sy=e.clientY;
+  if(dragged){
+    const{wx,wy}=toWorld(sx,sy);
+    dragged.x=wx-dragOX;dragged.y=wy-dragOY;
+    render();return;
+  }
+  if(panning){
+    viewX=sx-panSX+panVX;viewY=sy-panSY+panVY;
+    render();return;
+  }
+  const was=hovered;hovered=findNodeAt(sx,sy);
+  if(hovered!==was){render();updateTooltip(e.clientX,e.clientY,hovered);}
+  if(!hovered){updateTooltip(0,0,null);}
+});
+canvas.addEventListener('mousedown',e=>{
+  const n=findNodeAt(e.clientX,e.clientY);
+  if(n){
+    if(e.shiftKey||e.button===2){dragged=n;dragOX=n.x-e.clientX/zoom;dragOY=n.y-e.clientY/zoom;return;}
+  }else{panning=true;panSX=e.clientX;panSY=e.clientY;panVX=viewX;panVY=viewY;}
+});
+canvas.addEventListener('mouseup',()=>{dragged=null;panning=false;});
+canvas.addEventListener('mouseleave',()=>{dragged=null;panning=false;hovered=null;render();updateTooltip(0,0,null);});
+canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const zf=e.deltaY<0?1.1:0.9;
+  const mx=e.clientX,my=e.clientY;
+  viewX=mx-(mx-viewX)*zf;viewY=my-(my-viewY)*zf;
+  zoom=Math.max(0.1,Math.min(2,zoom*zf));
+  visibleNodes=getVisibleNodes();render();
+},{passive:false});
+canvas.addEventListener('click',e=>{
+  const n=findNodeAt(e.clientX,e.clientY);
+  if(n&&!dragged){
+    subGraphRoot=n;visibleNodes=getVisibleNodes();
+    // Center on node
+    viewX=W/2-n.x*zoom;viewY=H/2-n.y*zoom;
+    document.getElementById('subHint').classList.add('show');
+    setTimeout(()=>document.getElementById('subHint').classList.remove('show'),2500);
+    render();
+  }
+});
+canvas.addEventListener('dblclick',e=>{
+  const n=findNodeAt(e.clientX,e.clientY);
+  if(n){openDetail(n);}else{subGraphRoot=null;visibleNodes=getVisibleNodes();resetView();render();}
+});
+canvas.addEventListener('contextmenu',e=>{e.preventDefault();});
+
+function updateTooltip(tx,ty,n){
+  const t=document.getElementById('tooltip');
+  if(!n){t.style.opacity='0';return;}
+  t.style.opacity='1';t.style.left=(tx+16)+'px';t.style.top=(ty-16)+'px';
+  t.innerHTML=`<div class="t-word">${n.word}</div><div class="t-phon">${n.phon} ${n.pos}</div><div class="t-def">${n.def.slice(0,60)}…</div>`;
+}
+
+// ============================================================
+// DETAIL PANEL
+// ============================================================
+function openDetail(n){
+  const panel=document.getElementById('detailPanel');
+  const content=document.getElementById('detailContent');
+  const lvl=n.mastery;
+  content.innerHTML=`
+    <div class="d-word">${n.word}</div>
+    <div class="d-meta"><span class="d-phon">${n.phon}</span><span class="d-pos">${n.pos}</span></div>
+    <div class="d-def">${n.def}</div>
+    ${n.ex?`<div class="d-ex">${n.ex}</div>`:''}
+    ${n.root?`<div class="d-root">🧬 ${n.root}</div>`:''}
+    <div class="d-related"><h4>关联词 (${n.connections.length})</h4>
+      ${n.connections.slice(0,12).map(c=>`<span class="rel-tag" onclick="jumpToNode(${c.node.id})">${c.word}</span>`).join('')}
+    </div>
     <div class="rating-row">
-      <button class="r-unknown${level==='unknown'?' active':''}" onclick="rateWord('unknown')">不认识</button>
-      <button class="r-vague${level==='passive'?' active':''}" onclick="rateWord('passive')">模糊</button>
-      <button class="r-master${level==='mastered'?' active':''}" onclick="rateWord('mastered')">掌握</button>
+      <button style="${lvl==='unknown'?'background:rgba(255,69,58,0.2);color:#ff453a':''}" onclick="markNode(${n.id},'unknown')">不认识</button>
+      <button style="${lvl==='passive'?'background:rgba(255,159,10,0.2);color:#ff9f0a':''}" onclick="markNode(${n.id},'passive')">模糊</button>
+      <button style="${lvl==='mastered'?'background:rgba(48,209,88,0.2);color:#30d158':''}" onclick="markNode(${n.id},'mastered')">掌握</button>
     </div>`;
-  document.body.appendChild(center);nodeElements.push(center);
-  updateTrail();
+  panel.classList.add('open');
+}
+function closeDetail(){document.getElementById('detailPanel').classList.remove('open');}
+function jumpToNode(id){
+  const n=nodes[id];if(!n)return;
+  subGraphRoot=n;visibleNodes=getVisibleNodes();
+  viewX=W/2-n.x*zoom;viewY=H/2-n.y*zoom;
+  openDetail(n);render();
+}
+function markNode(id,level){
+  nodes[id].mastery=level;
+  try{const d=JSON.parse(localStorage.getItem('vocab_screening_v3')||'{"results":{},"answers":{},"screened":0}');if(!(id in d.results))d.screened++;d.results[id]=level;localStorage.setItem('vocab_screening_v3',JSON.stringify(d));}catch(e){}
+  openDetail(nodes[id]);render();
 }
 
 // ============================================================
-// ACTIONS
+// CONTROLS
 // ============================================================
-function navigateTo(word){history.push(currentWordId);if(history.length>20)history.shift();nodeElements.forEach(e=>e.remove());nodeElements=[];renderGraph(word);}
-function goBack(){if(!history.length)return;const prev=history.pop();nodeElements.forEach(e=>e.remove());nodeElements=[];renderGraph(prev);}
-
+function resetView(){subGraphRoot=null;visibleNodes=getVisibleNodes();viewX=0;viewY=0;zoom=0.35;render();}
+function focusWeakest(){
+  const unk=nodes.filter(n=>n.mastery==='unknown');
+  const pass=nodes.filter(n=>n.mastery==='passive');
+  const pool=unk.length>0?unk:pass.length>0?pass:nodes;
+  const n=pool[Math.floor(Math.random()*pool.length)];
+  subGraphRoot=n;visibleNodes=getVisibleNodes();
+  viewX=W/2-n.x*zoom;viewY=H/2-n.y*zoom;zoom=Math.min(0.6,zoom*1.5);
+  render();
+}
 function randomJump(){
-  const weak=[];WORD_BANK.forEach(w=>{const l=getScreeningLevel(w.w);if(l==='unknown'||l==='passive')weak.push(w.w);});
-  const pool=weak.length>0?weak:WORD_BANK.map(w=>w.w);
-  const pick=pool[Math.floor(Math.random()*pool.length)];
-  nodeElements.forEach(e=>e.remove());nodeElements=[];renderGraph(pick);
+  const pool=nodes.filter(n=>n.mastery!=='mastered');
+  const n=(pool.length>0?pool:nodes)[Math.floor(Math.random()*(pool.length>0?pool:nodes).length)];
+  subGraphRoot=n;visibleNodes=getVisibleNodes();
+  viewX=W/2-n.x*zoom;viewY=H/2-n.y*zoom;
+  render();
 }
-
-function resetGraph(){history=[];nodeElements.forEach(e=>e.remove());nodeElements=[];initGraph();}
-
-function rateWord(level){
-  try{
-    const d=JSON.parse(localStorage.getItem('vocab_screening_v3')||'{"results":{},"answers":{},"screened":0}');
-    const i=WORD_BANK.findIndex(w=>w.w===currentWordId);
-    if(i<0)return;
-    if(!(i in d.results))d.screened++;
-    d.results[i]=level;d.answers[i]=level==='unknown'?'不认识':level==='mastered'?'掌握':'模糊';
-    localStorage.setItem('vocab_screening_v3',JSON.stringify(d));
-  }catch(e){}
-  const old=document.getElementById('centerNode');if(old)old.remove();
-  nodeElements=nodeElements.filter(e=>e.id!=='centerNode');
-  renderGraph(currentWordId);
-}
-
-function updateTrail(){
-  const all=[...history.slice(-8),currentWordId].filter(Boolean);
-  document.getElementById('trail').innerHTML=all.map((w,i)=>`${i>0?'<span class="t-arrow">→</span>':''}<span class="t-node${i===all.length-1?' t-current':''}" onclick="jumpHistory(${i})">${w}</span>`).join('');
-}
-
-function jumpHistory(idx){
-  const all=[...history.slice(-8),currentWordId].filter(Boolean);
-  if(idx>=all.length)return;
-  history=history.slice(0,history.length-(all.length-1-idx));
-  nodeElements.forEach(e=>e.remove());nodeElements=[];renderGraph(all[idx]);
-}
-
-function toggleEdges(){
-  document.querySelectorAll('#edgeLegend input').forEach(cb=>{activeEdges[cb.dataset.type]=cb.checked;});
-  nodeElements.forEach(e=>e.remove());nodeElements=[];renderGraph(currentWordId);
-}
+function toggleEdge(type){EDGES[type].active=!EDGES[type].active;visibleNodes=getVisibleNodes();render();}
 
 // ============================================================
 // INIT
 // ============================================================
-function initGraph(){
-  let start=WORD_BANK[0].w;
-  try{
-    const d=JSON.parse(localStorage.getItem('vocab_screening_v3')||'{}');
-    if(d.results){
-      const unk=[],pass=[];
-      Object.entries(d.results).forEach(([k,v])=>{
-        const i=parseInt(k);
-        if(i<WORD_BANK.length){if(v==='unknown')unk.push(i);else if(v==='passive')pass.push(i);}
-      });
-      const pool=unk.length>0?unk:pass;
-      if(pool.length)start=WORD_BANK[pool[Math.floor(Math.random()*pool.length)]].w;
-    }
-  }catch(e){}
-  renderGraph(start);
-}
+visibleNodes=getVisibleNodes();
+// Start at weakest
+setTimeout(focusWeakest,300);
 
-window.addEventListener('resize',()=>{if(currentWordId){nodeElements.forEach(e=>e.remove());nodeElements=[];renderGraph(currentWordId);}});
-initGraph();
+// Animation loop (only when dragging/zooming)
+function loop(){
+  if(dragged||panning)render();
+  requestAnimationFrame(loop);
+}
+loop();
+render();
+
+// Keyboard
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){subGraphRoot=null;visibleNodes=getVisibleNodes();resetView();render();closeDetail();}
+  if(e.key==='f'&&!e.ctrlKey&&!e.metaKey){focusWeakest();}
+  if(e.key==='r'&&!e.ctrlKey&&!e.metaKey){randomJump();}
+});
 </script>
 </body>
 </html>
