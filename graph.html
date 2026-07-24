@@ -179,15 +179,19 @@ cv.addEventListener('touchend',()=>{pan=false;_pd=0;drag=null;});
 
 // ── RATING POPOVER (floating bubbles near node) ──
 function showRatingPopover(n){
-  // Remove existing popover
-  const old=document.getElementById('ratingPopover');
-  if(old)old.remove();
-  const p=wp(n);
-  const div=document.createElement('div');
-  div.id='ratingPopover';
-  div.style.cssText='position:fixed;z-index:15;background:rgba(36,36,38,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:6px 8px;border-radius:14px;display:flex;gap:6px;box-shadow:0 4px 24px rgba(0,0,0,0.5);transition:all 0.25s ease;';
-  div.style.left=(p.x-90)+'px';div.style.top=(p.y+n.r*zm+16)+'px';
-  div.innerHTML='<button style="padding:9px 16px;border-radius:100px;border:none;background:rgba(255,69,58,0.15);color:#ff453a;font-size:0.85rem;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all 0.15s;" onmouseover="this.style.background=\"rgba(255,69,58,0.28)\"" onmouseout="this.style.background=\"rgba(255,69,58,0.15)\"" onclick="markNodePop('+n.id+',"unknown")">😰 不认识</button><button style="padding:9px 16px;border-radius:100px;border:none;background:rgba(255,159,10,0.15);color:#ff9f0a;font-size:0.85rem;cursor:pointer;font-family:inherit;white-space:nowrap;" onclick="markNodePop('+n.id+',"passive")">🤔 模糊</button><button style="padding:9px 16px;border-radius:100px;border:none;background:rgba(48,209,88,0.15);color:#30d158;font-size:0.85rem;cursor:pointer;font-family:inherit;white-space:nowrap;" onclick="markNodePop('+n.id+',"mastered")">😎 掌握</button>';
+  var old=document.getElementById("ratingPopover");if(old)old.remove();
+  var div=document.createElement("div");div.id="ratingPopover";
+  div.style.cssText="position:fixed;z-index:25;left:50%;transform:translateX(-50%);bottom:100px;background:rgba(36,36,38,0.95);backdrop-filter:blur(12px);padding:10px 12px;border-radius:16px;display:flex;gap:8px;box-shadow:0 4px 32px rgba(0,0,0,0.6);transition:all 0.25s ease;";
+  [
+    {t:"😰 不认识",s:"background:rgba(255,69,58,0.2);color:#ff453a",l:"unknown"},
+    {t:"🤔 模糊",s:"background:rgba(255,159,10,0.2);color:#ff9f0a",l:"passive"},
+    {t:"😎 掌握",s:"background:rgba(48,209,88,0.2);color:#30d158",l:"mastered"}
+  ].forEach(function(b){
+    var btn=document.createElement("button");
+    btn.textContent=b.t;btn.style.cssText="padding:10px 18px;border-radius:100px;border:none;font-size:0.85rem;cursor:pointer;font-family:inherit;white-space:nowrap;"+b.s;
+    btn.onclick=function(){markNodePop(n.id,b.l);};
+    div.appendChild(btn);
+  });
   document.body.appendChild(div);
   showInfoCard(n);
 }
@@ -203,15 +207,19 @@ function markNodePop(id,level){
 
 // ── INFO CARD (root/affix in focus mode) ──
 function showInfoCard(n){
-  const old=document.getElementById('infoPopover');
-  if(old)old.remove();
-  if(!n.root)return;
-  const p=wp(n);
-  const card=document.createElement('div');
-  card.id='infoPopover';
-  card.style.cssText='position:fixed;z-index:15;background:rgba(36,36,38,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:10px 14px;border-radius:14px;max-width:280px;box-shadow:0 4px 24px rgba(0,0,0,0.5);font-size:0.78rem;color:var(--text2);line-height:1.5;transition:all 0.25s ease;';
-  card.style.left=(p.x-140)+'px';card.style.top=(p.y+n.r*zm+68)+'px';
-  card.innerHTML='<div style="font-size:0.65rem;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">🧬 词根拆解</div><div>'+n.root+'</div>';
+  var old=document.getElementById("infoPopover");if(old)old.remove();
+  var family=findRootFamily(n.word);if(!family)return;
+  var relatives=Object.entries(family.words).filter(function(e){return e[0]!==n.word&&NM[e[0]];});
+  if(!relatives.length)return;
+  var card=document.createElement("div");card.id="infoPopover";
+  card.style.cssText="position:fixed;z-index:15;left:12px;top:50%;transform:translateY(-50%);background:rgba(36,36,38,0.95);backdrop-filter:blur(12px);padding:14px 16px;border-radius:16px;max-width:270px;box-shadow:0 4px 32px rgba(0,0,0,0.5);font-size:0.78rem;color:var(--text2);line-height:1.6;";
+  var parts=[];
+  parts.push("<div style='font-size:0.7rem;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px'>🧬 词根家族: "+family.root+"</div>");
+  parts.push("<div style='color:#fff;font-weight:700;margin-bottom:8px'>▶ "+n.word+" ← 当前词</div>");
+  relatives.forEach(function(e){
+    parts.push("<div style='padding:3px 0;font-size:0.73rem'><span style='color:#fff'>"+e[0]+"</span> <span style='color:var(--accent);font-size:0.65rem'>"+e[1].prefix+"</span> <span style='color:var(--text3);font-size:0.65rem'>"+e[1].hint+"</span></div>");
+  });
+  card.innerHTML=parts.join("");
   document.body.appendChild(card);
 }
 
